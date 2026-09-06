@@ -2,6 +2,7 @@ package com.manu156.levelup
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
@@ -80,6 +81,10 @@ fun FocusFlowApp() {
     val userProfile by repository.userProfile.collectAsState()
     val dailyGoalHours by repository.dailyGoalHours.collectAsState()
 
+    BackHandler(enabled = activeModal != AppModalScreen.NONE) {
+        activeModal = AppModalScreen.NONE
+    }
+
     if (showSplash) {
         SplashScreen(
             onDismiss = { showSplash = false }
@@ -119,6 +124,7 @@ fun FocusFlowApp() {
                                 NavTab.HOME -> {
                                     HomeScreen(
                                         userName = userProfile.name,
+                                        avatarUri = userProfile.avatarUri,
                                         sessions = todaySessions,
                                         dayStats = repository.getDayStats(),
                                         onCheckInClick = {
@@ -153,7 +159,9 @@ fun FocusFlowApp() {
                                 NavTab.PROFILE -> {
                                     ProfileScreen(
                                         userProfile = userProfile,
-                                        onSettingsClick = { activeModal = AppModalScreen.SETTINGS }
+                                        onSettingsClick = { activeModal = AppModalScreen.SETTINGS },
+                                        onAvatarChange = { repository.saveAvatar(it) },
+                                        onPickGalleryImage = { repository.saveCustomAvatarFromUri(it) }
                                     )
                                 }
                             }

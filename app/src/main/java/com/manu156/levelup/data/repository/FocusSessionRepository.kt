@@ -59,6 +59,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         val savedStreak = prefs.getInt(KEY_USER_STREAK, 12)
         val savedTotalWork = prefs.getInt(KEY_TOTAL_WORK, 48)
         val savedGoal = prefs.getFloat(KEY_DAILY_GOAL, 8f)
+        val savedAvatar = prefs.getString(KEY_AVATAR_URI, "preset:alex") ?: "preset:alex"
 
         _dailyGoalHours.value = savedGoal
         _userProfile.value = UserProfile(
@@ -66,7 +67,8 @@ class FocusSessionRepository private constructor(private val context: Context) {
             subtitle = "Building a better tomorrow ✨",
             dayStreak = savedStreak,
             totalWorkHours = savedTotalWork,
-            dailyGoalHours = savedGoal.toInt()
+            dailyGoalHours = savedGoal.toInt(),
+            avatarUri = savedAvatar
         )
 
         // Load sessions
@@ -92,6 +94,28 @@ class FocusSessionRepository private constructor(private val context: Context) {
         prefs.edit().putString(KEY_USER_NAME, cleanName).apply()
         _userProfile.update { it.copy(name = cleanName) }
     }
+
+    fun saveAvatar(avatarUri: String) {
+        prefs.edit().putString(KEY_AVATAR_URI, avatarUri).apply()
+        _userProfile.update { it.copy(avatarUri = avatarUri) }
+    }
+
+    fun saveCustomAvatarFromUri(sourceUri: android.net.Uri): String? {
+        return try {
+            val targetFile = java.io.File(context.filesDir, "custom_avatar.jpg")
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                java.io.FileOutputStream(targetFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            val path = targetFile.absolutePath
+            saveAvatar(path)
+            path
+        } catch (e: Exception) {
+            null
+        }
+    }
+
 
     fun startSession(title: String, category: SessionCategory = SessionCategory.DEEP_WORK) {
         val now = System.currentTimeMillis()
@@ -254,6 +278,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
 
     companion object {
         private const val KEY_USER_NAME = "user_name"
+        private const val KEY_AVATAR_URI = "avatar_uri"
         private const val KEY_USER_STREAK = "user_streak"
         private const val KEY_TOTAL_WORK = "total_work"
         private const val KEY_DAILY_GOAL = "daily_goal"

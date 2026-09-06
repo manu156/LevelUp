@@ -50,6 +50,8 @@ import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.BullseyeTargetIcon
 import com.manu156.levelup.ui.components.RoundedCapsuleBarChart
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.components.slimeBounceClick
+import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.FocusAmber
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
@@ -141,12 +143,13 @@ fun GoalsScreen(
                             )
                         }
 
-                        // Mount Fuji Badge Illustration
+                        // Mount Fuji Badge Illustration (with sparkle burst on tap)
                         Box(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
                                 .border(1.5.dp, FocusAmber.copy(alpha = 0.6f), CircleShape)
+                                .sparkleBurstClick { }
                         ) {
                             Image(
                                 painter = painterResource(R.drawable.badge_fuji),
@@ -221,7 +224,7 @@ fun GoalsScreen(
 
                     Spacer(modifier = Modifier.height(22.dp))
 
-                    // Edit Goal Button
+                    // Edit Goal Button with Slime Squash & Stretch feedback
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -229,7 +232,7 @@ fun GoalsScreen(
                             .clip(RoundedCornerShape(23.dp))
                             .background(Color(0xFF22284E))
                             .border(1.dp, FocusCardBorder, RoundedCornerShape(23.dp))
-                            .clickable { showEditDialog = true },
+                            .slimeBounceClick { showEditDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

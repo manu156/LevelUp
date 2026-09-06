@@ -1,5 +1,6 @@
 package com.manu156.levelup.ui.components
 
+import android.graphics.BitmapFactory
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -10,6 +11,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,10 +43,15 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.manu156.levelup.R
 import com.manu156.levelup.ui.theme.FocusCardBg
 import com.manu156.levelup.ui.theme.FocusCardBorder
 import com.manu156.levelup.ui.theme.FocusMint
@@ -57,6 +64,47 @@ import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
 
 val DarkButtonText = Color(0xFF0C0F1E)
+
+@Composable
+fun AnimeUserAvatar(
+    avatarUri: String?,
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Avatar"
+) {
+    val customBitmap = remember(avatarUri) {
+        if (avatarUri != null && !avatarUri.startsWith("preset:")) {
+            try {
+                BitmapFactory.decodeFile(avatarUri)?.asImageBitmap()
+            } catch (e: Exception) {
+                null
+            }
+        } else null
+    }
+
+    val resId = when (avatarUri) {
+        "preset:chibi" -> R.drawable.avatar_chibi
+        "preset:twilight" -> R.drawable.avatar_twilight
+        "preset:cat" -> R.drawable.avatar_cat
+        "preset:hug" -> R.drawable.avatar_hug
+        else -> R.drawable.avatar_alex
+    }
+
+    if (customBitmap != null) {
+        Image(
+            bitmap = customBitmap,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+    } else {
+        Image(
+            painter = painterResource(resId),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+    }
+}
 
 @Composable
 fun AnimeGlowCard(
@@ -86,9 +134,10 @@ fun AnimePillButton(
     modifier: Modifier = Modifier,
     icon: (@Composable () -> Unit)? = null,
     gradientColors: List<Color> = listOf(FocusPurple, FocusPurpleLight),
-    textColor: Color = DarkButtonText, // Darker color as in user mockup
+    textColor: Color = DarkButtonText,
     height: Dp = 56.dp,
     enabled: Boolean = true,
+    feedbackStyle: AnimeFeedbackStyle = AnimeFeedbackStyle.SLIME,
     onClick: () -> Unit
 ) {
     Box(
@@ -104,7 +153,7 @@ fun AnimePillButton(
                 brush = Brush.horizontalGradient(gradientColors),
                 shape = RoundedCornerShape(height / 2)
             )
-            .animeSpringClick(enabled = enabled, onClick = onClick),
+            .animeButtonFeedback(style = feedbackStyle, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -205,73 +254,85 @@ fun AnimeBottomNavBar(
     onTabSelected: (NavTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    // Floating bottom navigation bar with all 4 corners visible!
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .border(
-                border = BorderStroke(1.dp, FocusNavBorder),
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-            ),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        color = FocusNavBg
+            .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
     ) {
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(32.dp),
+                    ambientColor = FocusPurple.copy(alpha = 0.35f),
+                    spotColor = FocusPurple.copy(alpha = 0.45f)
+                )
+                .border(
+                    border = BorderStroke(1.2.dp, FocusNavBorder),
+                    shape = RoundedCornerShape(32.dp)
+                ),
+            shape = RoundedCornerShape(32.dp),
+            color = FocusNavBg.copy(alpha = 0.96f)
         ) {
-            NavItem(
-                isSelected = selectedTab == NavTab.HOME,
-                label = "Home",
-                onClick = { onTabSelected(NavTab.HOME) },
-                icon = { isSelected ->
-                    // Anime House icon as in mockup!
-                    AnimeHouseIcon(
-                        tint = if (isSelected) FocusPurple else FocusTextMuted,
-                        size = 24.dp
-                    )
-                }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp, horizontal = 12.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NavItem(
+                    isSelected = selectedTab == NavTab.HOME,
+                    label = "Home",
+                    onClick = { onTabSelected(NavTab.HOME) },
+                    icon = { isSelected ->
+                        AnimeHouseIcon(
+                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            size = 24.dp
+                        )
+                    }
+                )
 
-            NavItem(
-                isSelected = selectedTab == NavTab.STATS,
-                label = "Stats",
-                onClick = { onTabSelected(NavTab.STATS) },
-                icon = { isSelected ->
-                    Icon(
-                        imageVector = Icons.Default.BarChart,
-                        contentDescription = "Stats",
-                        tint = if (isSelected) FocusPurple else FocusTextMuted,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            )
+                NavItem(
+                    isSelected = selectedTab == NavTab.STATS,
+                    label = "Stats",
+                    onClick = { onTabSelected(NavTab.STATS) },
+                    icon = { isSelected ->
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = "Stats",
+                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
 
-            NavItem(
-                isSelected = selectedTab == NavTab.GOALS,
-                label = "Goals",
-                onClick = { onTabSelected(NavTab.GOALS) },
-                icon = { isSelected ->
-                    BullseyeTargetIcon(
-                        tint = if (isSelected) FocusPurple else FocusTextMuted,
-                        size = 24.dp
-                    )
-                }
-            )
+                NavItem(
+                    isSelected = selectedTab == NavTab.GOALS,
+                    label = "Goals",
+                    onClick = { onTabSelected(NavTab.GOALS) },
+                    icon = { isSelected ->
+                        BullseyeTargetIcon(
+                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            size = 24.dp
+                        )
+                    }
+                )
 
-            NavItem(
-                isSelected = selectedTab == NavTab.PROFILE,
-                label = "Profile",
-                onClick = { onTabSelected(NavTab.PROFILE) },
-                icon = { isSelected ->
-                    CatFaceIcon(
-                        tint = if (isSelected) FocusPurple else FocusTextMuted,
-                        size = 24.dp
-                    )
-                }
-            )
+                NavItem(
+                    isSelected = selectedTab == NavTab.PROFILE,
+                    label = "Profile",
+                    onClick = { onTabSelected(NavTab.PROFILE) },
+                    icon = { isSelected ->
+                        CatFaceIcon(
+                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            size = 24.dp
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -292,7 +353,7 @@ private fun NavItem(
     Box(
         modifier = Modifier
             .scale(scale)
-            .animeSpringClick(onClick = onClick)
+            .nekoTwitchClick(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {

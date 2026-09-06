@@ -68,11 +68,24 @@ import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.PhotoLibrary
+import com.manu156.levelup.ui.components.AnimeUserAvatar
+import com.manu156.levelup.ui.components.DarkButtonText
+import com.manu156.levelup.ui.components.nekoTwitchClick
+import com.manu156.levelup.ui.components.slimeBounceClick
+import com.manu156.levelup.ui.components.sparkleBurstClick
+
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onAvatarChange: (String) -> Unit = {},
+    onPickGalleryImage: (Uri) -> Unit = {}
 ) {
+    var showAvatarDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
@@ -117,21 +130,24 @@ fun ProfileScreen(
                 )
             }
 
-            // Circular Avatar overlapping banner
+            // Circular Avatar overlapping banner with neko twitch physics
             Box(
                 modifier = Modifier
                     .offset(y = (-45).dp)
                     .size(90.dp)
             ) {
-                Image(
-                    painter = painterResource(R.drawable.avatar_alex),
-                    contentDescription = "Profile Avatar",
-                    contentScale = ContentScale.Crop,
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
                         .border(3.dp, FocusPurpleLight, CircleShape)
-                )
+                        .nekoTwitchClick { showAvatarDialog = true }
+                ) {
+                    AnimeUserAvatar(
+                        avatarUri = userProfile.avatarUri,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 Box(
                     modifier = Modifier
@@ -140,7 +156,7 @@ fun ProfileScreen(
                         .clip(CircleShape)
                         .background(FocusPurple)
                         .border(2.dp, FocusBgDark, CircleShape)
-                        .clickable { onSettingsClick() },
+                        .nekoTwitchClick { showAvatarDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -388,6 +404,170 @@ fun ProfileScreen(
                 }
             )
         }
+
+        val galleryLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            uri?.let {
+                onPickGalleryImage(it)
+                showAvatarDialog = false
+            }
+        }
+
+        // Avatar Picker Dialog
+        if (showAvatarDialog) {
+            val presets = listOf(
+                Pair("preset:alex", "Alex"),
+                Pair("preset:chibi", "Chibi"),
+                Pair("preset:twilight", "Twilight"),
+                Pair("preset:cat", "Neko"),
+                Pair("preset:hug", "Hug")
+            )
+
+            AlertDialog(
+                onDismissRequest = { showAvatarDialog = false },
+                containerColor = FocusCardBg,
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Choose Avatar",
+                            color = FocusTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "✨", fontSize = 18.sp)
+                    }
+                },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Pick a character preset or select an image from your device.",
+                            color = FocusTextSecondary,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Row of Presets 1
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            presets.take(3).forEach { (id, name) ->
+                                AvatarOptionItem(
+                                    avatarUri = id,
+                                    name = name,
+                                    isSelected = userProfile.avatarUri == id,
+                                    onClick = {
+                                        onAvatarChange(id)
+                                        showAvatarDialog = false
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Row of Presets 2
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            presets.drop(3).forEach { (id, name) ->
+                                AvatarOptionItem(
+                                    avatarUri = id,
+                                    name = name,
+                                    isSelected = userProfile.avatarUri == id,
+                                    onClick = {
+                                        onAvatarChange(id)
+                                        showAvatarDialog = false
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Pick from device button with Slime Squash & Stretch feedback
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp)
+                                .clip(RoundedCornerShape(23.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(FocusPurple, FocusPurpleLight)
+                                    )
+                                )
+                                .slimeBounceClick { galleryLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = "Pick Image",
+                                    tint = DarkButtonText,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Choose from Phone",
+                                    color = DarkButtonText,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAvatarDialog = false }) {
+                        Text("Cancel", color = FocusTextSecondary)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AvatarOptionItem(
+    avatarUri: String,
+    name: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .slimeBounceClick { onClick() }
+            .padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .border(
+                    width = if (isSelected) 3.dp else 1.dp,
+                    color = if (isSelected) FocusMint else FocusCardBorder,
+                    shape = CircleShape
+                )
+        ) {
+            AnimeUserAvatar(
+                avatarUri = avatarUri,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = name,
+            color = if (isSelected) FocusMint else FocusTextPrimary,
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }
 

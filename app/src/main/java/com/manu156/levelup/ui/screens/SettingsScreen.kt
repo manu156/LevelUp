@@ -54,10 +54,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.manu156.levelup.ui.components.AnimeFeedbackStyle
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.components.animePanicShakeClick
+import com.manu156.levelup.ui.components.animeSpringClick
+import com.manu156.levelup.ui.components.katanaSlashClick
+import com.manu156.levelup.ui.components.nekoTwitchClick
+import com.manu156.levelup.ui.components.sakuraStampClick
+import com.manu156.levelup.ui.components.slimeBounceClick
+import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.AnimeThemeManager
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
@@ -88,6 +96,9 @@ fun SettingsScreen(
     var notificationsEnabled by remember { mutableStateOf(true) }
     var soundHapticsEnabled by remember { mutableStateOf(true) }
 
+    var lastDebugAction by remember { mutableStateOf("None (Tap any button below)") }
+    var debugClickCount by remember { mutableStateOf(0) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -113,7 +124,7 @@ fun SettingsScreen(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(FocusCardBg)
-                        .clickable { onBackClick() },
+                        .nekoTwitchClick(onClick = onBackClick),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -303,7 +314,7 @@ fun SettingsScreen(
                         .padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Action 1: Generate Sample / Dummy Data
+                    // Action 1: Generate Sample / Dummy Data with Sparkle Burst
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -311,7 +322,7 @@ fun SettingsScreen(
                             .clip(RoundedCornerShape(25.dp))
                             .background(Color(0xFF232B50))
                             .border(1.dp, FocusPurple.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
-                            .clickable {
+                            .sparkleBurstClick {
                                 onGenerateDummyData()
                                 Toast.makeText(context, "Sample sessions and data generated ✨", Toast.LENGTH_SHORT).show()
                             },
@@ -324,7 +335,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    // Action 2: Delete All Data
+                    // Action 2: Delete All Data with Comic Sweat-Drop & Panic Jitter
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -332,13 +343,281 @@ fun SettingsScreen(
                             .clip(RoundedCornerShape(25.dp))
                             .background(Color(0xFF381C28))
                             .border(1.dp, FocusCoral.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
-                            .clickable { showDeleteConfirmDialog = true },
+                            .animePanicShakeClick { showDeleteConfirmDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.DeleteForever, contentDescription = "Delete", tint = FocusCoral, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Delete All Data", color = FocusCoral, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Section 5: Debug (Anime Button & VFX Inspector)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Debug",
+                    color = FocusPurpleLight,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(FocusPurple.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "VFX Inspector",
+                        color = FocusPurpleLight,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AnimeGlowCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Inspector Status Display
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF161A30))
+                            .border(1.dp, FocusPurple.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Last Triggered Action", color = FocusTextMuted, fontSize = 11.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(lastDebugAction, color = FocusMint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                            if (debugClickCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(FocusPurple)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text("#$debugClickCount", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    // 1. Katana Slash
+                    Column {
+                        Text("1. Katana Slash (170ms delay • Neon blade cut & impact flash)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        AnimePillButton(
+                            text = "⚔️ Katana Slash (Check In)",
+                            gradientColors = listOf(Color(0xFF6CFFCE), Color(0xFF00E5FF)),
+                            feedbackStyle = AnimeFeedbackStyle.KATANA,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            lastDebugAction = "Katana Slash ⚔️ (170ms delay)"
+                            debugClickCount++
+                        }
+                    }
+
+                    // 2. Slime / Mochi Squash
+                    Column {
+                        Text("2. Slime / Mochi Bounce (120ms delay • Jelly squash & sheen)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        AnimePillButton(
+                            text = "🍮 Slime Squash & Stretch (CTA)",
+                            gradientColors = listOf(FocusPurple, FocusPurpleLight),
+                            feedbackStyle = AnimeFeedbackStyle.SLIME,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            lastDebugAction = "Slime Squash 🍮 (120ms delay)"
+                            debugClickCount++
+                        }
+                    }
+
+                    // 3. Sakura Quest Stamp
+                    Column {
+                        Text("3. Sakura Quest Stamp (200ms delay • Hanko seal & shockwave)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        AnimePillButton(
+                            text = "💮 Sakura Hanko Stamp (Check Out)",
+                            gradientColors = listOf(Color(0xFFFF5277), Color(0xFFFF85A1)),
+                            feedbackStyle = AnimeFeedbackStyle.SAKURA_STAMP,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            lastDebugAction = "Sakura Stamp 💮 (200ms delay)"
+                            debugClickCount++
+                        }
+                    }
+
+                    // 4. Comic Panic Jitter
+                    Column {
+                        Text("4. Comic Panic Jitter (180ms delay • 60Hz anxiety & sweat-drop)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(RoundedCornerShape(25.dp))
+                                .background(Color(0xFF381C28))
+                                .border(1.dp, FocusCoral.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
+                                .animePanicShakeClick {
+                                    lastDebugAction = "Comic Panic Jitter 💧 (180ms delay)"
+                                    debugClickCount++
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.DeleteForever, contentDescription = null, tint = FocusCoral, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("💧 Comic Panic Jitter (Danger)", color = FocusCoral, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // 5. Mahou Sparkle Burst
+                    Column {
+                        Text("5. Mahou Sparkle Burst (120ms delay • Stardust diamond burst)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(RoundedCornerShape(25.dp))
+                                .background(Color(0xFF232B50))
+                                .border(1.dp, FocusMint.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
+                                .sparkleBurstClick {
+                                    lastDebugAction = "Sparkle Burst ✨ (120ms delay)"
+                                    debugClickCount++
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = FocusMint, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("✨ Mahou Sparkle Burst", color = FocusTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // 6. Neko Ear Twitch
+                    Column {
+                        Text("6. Neko Ear Twitch (150ms delay • Ears pop & head tilt)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(RoundedCornerShape(25.dp))
+                                .background(Color(0xFF262C52))
+                                .border(1.dp, FocusPurpleLight.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
+                                .nekoTwitchClick {
+                                    lastDebugAction = "Neko Ear Twitch 🐾 (150ms delay)"
+                                    debugClickCount++
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🐾", fontSize = 16.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Neko Ear Twitch (Nav & Avatar)", color = FocusPurpleLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // 7. Tactile Spring
+                    Column {
+                        Text("7. Tactile Spring (70ms delay • Classic bouncy compression)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        AnimePillButton(
+                            text = "🌸 Classic Anime Spring",
+                            gradientColors = listOf(Color(0xFFFFB2C9), Color(0xFFFF85A1)),
+                            feedbackStyle = AnimeFeedbackStyle.DEFAULT,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            lastDebugAction = "Classic Spring 🌸 (70ms delay)"
+                            debugClickCount++
+                        }
+                    }
+
+                    // 8. Compact Controls & Chips
+                    Column {
+                        Text("8. Compact Controls & Chips", color = FocusTextSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color(0xFF262C52))
+                                    .border(1.dp, FocusPurple.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                                    .slimeBounceClick {
+                                        lastDebugAction = "Preset Chip (+25m, Slime)"
+                                        debugClickCount++
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("+25m Chip", color = FocusTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(FocusCardBg)
+                                    .border(1.dp, FocusCardBorder, CircleShape)
+                                    .nekoTwitchClick {
+                                        lastDebugAction = "Neko Circle Icon 🐾"
+                                        debugClickCount++
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🐾", fontSize = 16.sp)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color(0xFF1E293B))
+                                    .border(1.dp, FocusMint.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                                    .sparkleBurstClick {
+                                        lastDebugAction = "Sparkle Badge ✨"
+                                        debugClickCount++
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = FocusMint, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Badge", color = FocusMint, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
                         }
                     }
                 }

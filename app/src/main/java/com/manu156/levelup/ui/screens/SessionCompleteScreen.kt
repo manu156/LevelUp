@@ -32,10 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manu156.levelup.R
 import com.manu156.levelup.data.model.WorkSession
+import com.manu156.levelup.ui.components.AnimeFeedbackStyle
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.components.nekoTwitchClick
+import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
 import com.manu156.levelup.ui.theme.FocusPurple
@@ -83,7 +86,7 @@ fun SessionCompleteScreen(
                     )
             )
 
-            // Close button 'x'
+            // Close button 'x' with neko twitch physics
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -91,7 +94,7 @@ fun SessionCompleteScreen(
                     .size(38.dp)
                     .clip(CircleShape)
                     .background(FocusCardBg.copy(alpha = 0.8f))
-                    .clickable { onBackToHomeClick() },
+                    .nekoTwitchClick(onClick = onBackToHomeClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -123,9 +126,11 @@ fun SessionCompleteScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Summary Card
+            // Summary Card with celebratory sparkle burst
             AnimeGlowCard(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .sparkleBurstClick { }
             ) {
                 Column(
                     modifier = Modifier
@@ -182,10 +187,11 @@ fun SessionCompleteScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Back to Home Button
+            // Back to Home Button with Sakura Quest Stamp feedback!
             AnimePillButton(
                 text = "Back to Home",
                 modifier = Modifier.fillMaxWidth(),
+                feedbackStyle = AnimeFeedbackStyle.SAKURA_STAMP,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Home,

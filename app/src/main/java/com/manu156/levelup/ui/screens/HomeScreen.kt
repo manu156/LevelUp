@@ -56,9 +56,16 @@ import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
 
+import com.manu156.levelup.ui.components.AnimeFeedbackStyle
+import com.manu156.levelup.ui.components.AnimeUserAvatar
+import com.manu156.levelup.ui.components.nekoTwitchClick
+import com.manu156.levelup.ui.components.sparkleBurstClick
+import com.manu156.levelup.ui.theme.GaeguFontFamily
+
 @Composable
 fun HomeScreen(
     userName: String,
+    avatarUri: String = "preset:alex",
     sessions: List<WorkSession>,
     dayStats: DayStats,
     onCheckInClick: () -> Unit,
@@ -104,18 +111,16 @@ fun HomeScreen(
                         }
                     }
 
-                    // Avatar with glowing border
+                    // Avatar with glowing border and neko twitch physics
                     Box(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
                             .border(2.dp, FocusPurpleLight, CircleShape)
-                            .clickable { onAvatarClick() }
+                            .nekoTwitchClick(onClick = onAvatarClick)
                     ) {
-                        Image(
-                            painter = painterResource(R.drawable.avatar_alex),
-                            contentDescription = "User Avatar",
-                            contentScale = ContentScale.Crop,
+                        AnimeUserAvatar(
+                            avatarUri = avatarUri,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -205,12 +210,13 @@ fun HomeScreen(
                 }
             }
 
-            // Big Pill Action Button: Check In (with darker text)
+            // Big Pill Action Button: Check In with Katana Slash Cut feedback!
             item {
                 AnimePillButton(
                     text = "Check In",
                     modifier = Modifier.fillMaxWidth(),
                     textColor = DarkButtonText,
+                    feedbackStyle = AnimeFeedbackStyle.KATANA,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -223,10 +229,12 @@ fun HomeScreen(
                 )
             }
 
-            // Motivation Banner: Small steps create big results
+            // Motivation Banner: Small steps create big results (with sparkle burst on tap)
             item {
                 AnimeGlowCard(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .sparkleBurstClick { }
                 ) {
                     Box(
                         modifier = Modifier
@@ -265,14 +273,16 @@ fun HomeScreen(
                                 Text(
                                     text = "Small steps",
                                     color = FocusTextPrimary,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = GaeguFontFamily
                                 )
                                 Text(
                                     text = "create big results.",
                                     color = FocusPurpleLight,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = GaeguFontFamily
                                 )
                             }
                         }

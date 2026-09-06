@@ -87,5 +87,7 @@ data class UserProfile(
     val subtitle: String = "Building a better tomorrow ✨",
     val dayStreak: Int = 12,
     val totalWorkHours: Int = 48,
-    val dailyGoalHours: Int = 8
+    val dailyGoalHours: Int = 8,
+    val avatarUri: String = "preset:alex"
 )
+

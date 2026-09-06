@@ -40,12 +40,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.manu156.levelup.ui.components.AnimeFeedbackStyle
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.CatFaceIcon
 import com.manu156.levelup.ui.components.CircularTimerGauge
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.components.nekoTwitchClick
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
 import com.manu156.levelup.ui.theme.FocusCardBorder
@@ -96,7 +98,7 @@ fun ActiveSessionScreen(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(FocusCardBg)
-                        .clickable { onBackClick() },
+                        .nekoTwitchClick(onClick = onBackClick),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -269,10 +271,11 @@ fun ActiveSessionScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Coral Check Out Pill Button
+            // Coral Check Out Pill Button with Sakura Quest Stamp Hanko feedback!
             AnimePillButton(
                 text = "Check Out",
                 modifier = Modifier.fillMaxWidth(),
+                feedbackStyle = AnimeFeedbackStyle.SAKURA_STAMP,
                 icon = {
                     CatFaceIcon(tint = DarkButtonText, size = 20.dp)
                 },

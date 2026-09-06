@@ -42,10 +42,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manu156.levelup.R
 import com.manu156.levelup.data.model.SessionCategory
+import com.manu156.levelup.ui.components.AnimeFeedbackStyle
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.components.slimeBounceClick
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
 import com.manu156.levelup.ui.theme.FocusCardBorder
@@ -219,7 +221,7 @@ fun CheckInScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(FocusCardBorder.copy(alpha = 0.5f))
-                                .clickable { taskTitle = chip }
+                                .slimeBounceClick { taskTitle = chip }
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
@@ -233,10 +235,11 @@ fun CheckInScreen(
 
                 Spacer(modifier = Modifier.height(26.dp))
 
-                // Large Check In Button
+                // Large Check In Button with Katana Slash Cut feedback!
                 AnimePillButton(
                     text = "Check In",
                     modifier = Modifier.fillMaxWidth(),
+                    feedbackStyle = AnimeFeedbackStyle.KATANA,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
