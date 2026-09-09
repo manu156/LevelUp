@@ -2,8 +2,16 @@ package com.manu156.levelup.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.manu156.levelup.data.health.HealthConnectManager
+import com.manu156.levelup.data.health.HealthConnectSyncedData
+import com.manu156.levelup.data.model.CheckInGoalItem
+import com.manu156.levelup.data.model.DailyCheckInRecord
 import com.manu156.levelup.data.model.DayProgress
 import com.manu156.levelup.data.model.DayStats
+import com.manu156.levelup.data.model.Goal
+import com.manu156.levelup.data.model.GoalCadence
+import com.manu156.levelup.data.model.GoalCategory
+import com.manu156.levelup.data.model.GoalUnit
 import com.manu156.levelup.data.model.SessionCategory
 import com.manu156.levelup.data.model.UserProfile
 import com.manu156.levelup.data.model.WeeklyGoalProgress
@@ -17,6 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.Calendar
 import java.util.UUID
 
@@ -52,8 +62,16 @@ class FocusSessionRepository private constructor(private val context: Context) {
     private val _dailyGoalHours = MutableStateFlow(8f)
     val dailyGoalHours: StateFlow<Float> = _dailyGoalHours.asStateFlow()
 
+    private val healthConnectManager = HealthConnectManager(context)
+
+    private val _healthSyncedData = MutableStateFlow(HealthConnectSyncedData())
+    val healthSyncedData: StateFlow<HealthConnectSyncedData> = _healthSyncedData.asStateFlow()
+
+    private val _goals = MutableStateFlow<List<Goal>>(emptyList())
+    val goals: StateFlow<List<Goal>> = _goals.asStateFlow()
+
     init {
-        // Load user name
+        // Load user profile
         val savedName = prefs.getString(KEY_USER_NAME, null)
         val initialName = savedName ?: "Alex"
         val savedStreak = prefs.getInt(KEY_USER_STREAK, 12)
@@ -71,6 +89,15 @@ class FocusSessionRepository private constructor(private val context: Context) {
             avatarUri = savedAvatar
         )
 
+        // Load goals
+        val savedGoalsJson = prefs.getString(KEY_GOALS_JSON, null)
+        val initialGoals = if (!savedGoalsJson.isNullOrEmpty()) {
+            deserializeGoals(savedGoalsJson)
+        } else {
+            Goal.defaultFixedGoals(workHours = savedGoal.toDouble())
+        }
+        _goals.value = ensureFixedGoalsExist(initialGoals)
+
         // Load sessions
         val hasGenerated = prefs.getBoolean(KEY_HAS_DATA, true)
         if (hasGenerated) {
@@ -83,6 +110,135 @@ class FocusSessionRepository private constructor(private val context: Context) {
             val title = prefs.getString(KEY_ACTIVE_TITLE, "Focus Session") ?: "Focus Session"
             resumeSession(savedStartTime, title)
         }
+    }
+
+    private fun ensureFixedGoalsExist(existing: List<Goal>): List<Goal> {
+        val existingCategories = existing.map { it.category }.toSet()
+        val defaults = Goal.defaultFixedGoals(workHours = _dailyGoalHours.value.toDouble())
+        val missingDefaults = defaults.filter { it.category !in existingCategories }
+        return existing + missingDefaults
+    }
+
+    private fun saveGoalsToPrefs(goalsList: List<Goal>) {
+        _goals.value = goalsList
+        val json = serializeGoals(goalsList)
+        prefs.edit().putString(KEY_GOALS_JSON, json).apply()
+
+        val workGoal = goalsList.find { it.category == GoalCategory.WORK }
+        if (workGoal != null) {
+            _dailyGoalHours.value = workGoal.targetValue.toFloat()
+            prefs.edit().putFloat(KEY_DAILY_GOAL, workGoal.targetValue.toFloat()).apply()
+            _userProfile.update { it.copy(dailyGoalHours = workGoal.targetValue.toInt()) }
+        }
+    }
+
+    fun updateGoalTarget(goalId: String, newTarget: Double) {
+        val updated = _goals.value.map { goal ->
+            if (goal.id == goalId) {
+                goal.copy(targetValue = newTarget)
+            } else goal
+        }
+        saveGoalsToPrefs(updated)
+    }
+
+    fun addCustomGoal(
+        title: String,
+        targetValue: Double,
+        unit: GoalUnit = GoalUnit.HOURS,
+        cadence: GoalCadence = GoalCadence.DAILY
+    ): Goal {
+        val newGoal = Goal(
+            id = "custom_" + UUID.randomUUID().toString().take(8),
+            title = if (title.isBlank()) "Custom Goal" else title.trim(),
+            category = GoalCategory.CUSTOM,
+            cadence = cadence,
+            targetValue = targetValue,
+            unit = unit,
+            isFixed = false
+        )
+        val updated = _goals.value + newGoal
+        saveGoalsToPrefs(updated)
+        return newGoal
+    }
+
+    fun deleteGoal(goalId: String): Boolean {
+        val targetGoal = _goals.value.find { it.id == goalId }
+        if (targetGoal == null || targetGoal.isFixed) {
+            // Non-deletable if fixed goal
+            return false
+        }
+        val updated = _goals.value.filterNot { it.id == goalId }
+        saveGoalsToPrefs(updated)
+        return true
+    }
+
+    suspend fun syncHealthConnectData(useSimulatedIfUnavailable: Boolean = true): HealthConnectSyncedData {
+        val synced = healthConnectManager.fetchSyncedData(useSimulatedIfUnavailable = useSimulatedIfUnavailable)
+        _healthSyncedData.value = synced
+
+        // Update current values on fixed goals from synced Health Connect data
+        if (synced.isAvailable) {
+            val updated = _goals.value.map { goal ->
+                when (goal.category) {
+                    GoalCategory.RUNNING -> synced.runningKm?.let { goal.copy(currentValue = it) } ?: goal
+                    GoalCategory.BEDTIME -> synced.bedtimeHourFraction?.let { goal.copy(currentValue = it) } ?: goal
+                    GoalCategory.WAKE_TIME -> synced.wakeHourFraction?.let { goal.copy(currentValue = it) } ?: goal
+                    else -> goal
+                }
+            }
+            saveGoalsToPrefs(updated)
+        }
+        return synced
+    }
+
+    fun prepareCheckInGoalItems(): List<CheckInGoalItem> {
+        val synced = _healthSyncedData.value
+        val todaySessionsList = _todaySessions.value
+        val todayWorkedHours = todaySessionsList.sumOf { it.durationHours.toDouble() }
+
+        return _goals.value.map { goal ->
+            val (syncedVal, isHcSynced) = when (goal.category) {
+                GoalCategory.WORK -> Pair(todayWorkedHours, false)
+                GoalCategory.RUNNING -> Pair(synced.runningKm, synced.isAvailable && synced.hasPermissions)
+                GoalCategory.BEDTIME -> Pair(synced.bedtimeHourFraction, synced.isAvailable && synced.hasPermissions)
+                GoalCategory.WAKE_TIME -> Pair(synced.wakeHourFraction, synced.isAvailable && synced.hasPermissions)
+                GoalCategory.CUSTOM -> Pair(null, false)
+            }
+
+            val userVal = syncedVal ?: goal.currentValue
+
+            CheckInGoalItem(
+                goalId = goal.id,
+                goalTitle = goal.title,
+                category = goal.category,
+                targetValue = goal.targetValue,
+                unit = goal.unit,
+                syncedValue = syncedVal,
+                userValue = userVal,
+                isConfirmed = true,
+                isHealthConnectSynced = isHcSynced
+            )
+        }
+    }
+
+    fun submitCheckIn(items: List<CheckInGoalItem>): DailyCheckInRecord {
+        val record = DailyCheckInRecord(
+            dateIso = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date()),
+            timestampMillis = System.currentTimeMillis(),
+            items = items
+        )
+
+        // Update goals currentValue from confirmed items
+        val itemMap = items.associateBy { it.goalId }
+        val updatedGoals = _goals.value.map { goal ->
+            val checkInItem = itemMap[goal.id]
+            if (checkInItem != null && checkInItem.isConfirmed) {
+                goal.copy(currentValue = checkInItem.userValue)
+            } else goal
+        }
+
+        saveGoalsToPrefs(updatedGoals)
+        return record
     }
 
     fun hasUserRegistered(): Boolean {
@@ -190,6 +346,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _dailyGoalHours.value = hours
         prefs.edit().putFloat(KEY_DAILY_GOAL, hours).apply()
         _userProfile.update { it.copy(dailyGoalHours = hours.toInt()) }
+        updateGoalTarget("fixed_work", hours.toDouble())
     }
 
     fun generateDummyData() {
@@ -282,9 +439,52 @@ class FocusSessionRepository private constructor(private val context: Context) {
         private const val KEY_USER_STREAK = "user_streak"
         private const val KEY_TOTAL_WORK = "total_work"
         private const val KEY_DAILY_GOAL = "daily_goal"
+        private const val KEY_GOALS_JSON = "goals_json"
         private const val KEY_HAS_DATA = "has_data"
         private const val KEY_ACTIVE_START = "active_session_start"
         private const val KEY_ACTIVE_TITLE = "active_session_title"
+
+        private fun serializeGoals(goals: List<Goal>): String {
+            val array = JSONArray()
+            goals.forEach { goal ->
+                val obj = JSONObject()
+                obj.put("id", goal.id)
+                obj.put("title", goal.title)
+                obj.put("category", goal.category.name)
+                obj.put("cadence", goal.cadence.name)
+                obj.put("targetValue", goal.targetValue)
+                obj.put("unit", goal.unit.name)
+                obj.put("isFixed", goal.isFixed)
+                obj.put("currentValue", goal.currentValue)
+                array.put(obj)
+            }
+            return array.toString()
+        }
+
+        private fun deserializeGoals(jsonStr: String): List<Goal> {
+            val list = mutableListOf<Goal>()
+            try {
+                val array = JSONArray(jsonStr)
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    list.add(
+                        Goal(
+                            id = obj.getString("id"),
+                            title = obj.getString("title"),
+                            category = GoalCategory.valueOf(obj.getString("category")),
+                            cadence = GoalCadence.valueOf(obj.getString("cadence")),
+                            targetValue = obj.getDouble("targetValue"),
+                            unit = GoalUnit.valueOf(obj.getString("unit")),
+                            isFixed = obj.getBoolean("isFixed"),
+                            currentValue = obj.optDouble("currentValue", 0.0)
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                return Goal.defaultFixedGoals()
+            }
+            return list
+        }
 
         @Volatile
         private var INSTANCE: FocusSessionRepository? = null
