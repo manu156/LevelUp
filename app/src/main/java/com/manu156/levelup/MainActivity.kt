@@ -80,6 +80,8 @@ fun FocusFlowApp() {
     val todaySessions by repository.todaySessions.collectAsState()
     val userProfile by repository.userProfile.collectAsState()
     val dailyGoalHours by repository.dailyGoalHours.collectAsState()
+    val goals by repository.goals.collectAsState()
+    val healthSyncedData by repository.healthSyncedData.collectAsState()
 
     BackHandler(enabled = activeModal != AppModalScreen.NONE) {
         activeModal = AppModalScreen.NONE
@@ -90,10 +92,17 @@ fun FocusFlowApp() {
             onDismiss = { showSplash = false }
         )
     } else if (showNamePrompt) {
-        // First-time launch: ask for user name!
+        // First-time launch: ask for user name & core fixed goals setup!
         OnboardingNameScreen(
             onNameSubmitted = { name ->
                 repository.saveUserName(name)
+            },
+            onOnboardingComplete = { name, workHours, runningKm, bedtimeHour, wakeHour ->
+                repository.saveUserName(name)
+                repository.updateGoalTarget("fixed_work", workHours)
+                repository.updateGoalTarget("fixed_running", runningKm)
+                repository.updateGoalTarget("fixed_bedtime", bedtimeHour)
+                repository.updateGoalTarget("fixed_wake", wakeHour)
                 showNamePrompt = false
             }
         )
@@ -151,8 +160,12 @@ fun FocusFlowApp() {
 
                                 NavTab.GOALS -> {
                                     GoalsScreen(
-                                        dailyGoalHours = dailyGoalHours,
-                                        onUpdateGoal = { repository.updateDailyGoal(it) }
+                                        goals = goals,
+                                        onUpdateGoalTarget = { id, target -> repository.updateGoalTarget(id, target) },
+                                        onAddCustomGoal = { title, target, unit, cadence ->
+                                            repository.addCustomGoal(title, target, unit, cadence)
+                                        },
+                                        onDeleteGoal = { id -> repository.deleteGoal(id) }
                                     )
                                 }
 
@@ -169,6 +182,14 @@ fun FocusFlowApp() {
 
                         AppModalScreen.CHECK_IN -> {
                             CheckInScreen(
+                                goals = goals,
+                                healthSyncedData = healthSyncedData,
+                                onSyncHealthConnect = {
+                                    repository.syncHealthConnectData()
+                                },
+                                onSubmitCheckIn = { items ->
+                                    repository.submitCheckIn(items)
+                                },
                                 onBackClick = { activeModal = AppModalScreen.NONE },
                                 onStartSession = { title, category ->
                                     repository.startSession(title, category)
