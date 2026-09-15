@@ -14,15 +14,39 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.manu156.levelup.data.git.ConflictResolutionChoice
+import com.manu156.levelup.data.git.GitConflictItem
+import com.manu156.levelup.data.git.GitSyncConfig
 import com.manu156.levelup.data.model.WorkSession
 import com.manu156.levelup.data.repository.FocusSessionRepository
 import com.manu156.levelup.ui.components.AnimeBottomNavBar
@@ -40,6 +64,11 @@ import com.manu156.levelup.ui.screens.SettingsScreen
 import com.manu156.levelup.ui.screens.SplashScreen
 import com.manu156.levelup.ui.screens.StatsScreen
 import com.manu156.levelup.ui.theme.LevelUpTheme
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 enum class AppModalScreen {
     NONE,
@@ -80,6 +109,12 @@ fun FocusFlowApp() {
     val todaySessions by repository.todaySessions.collectAsState()
     val userProfile by repository.userProfile.collectAsState()
     val dailyGoalHours by repository.dailyGoalHours.collectAsState()
+
+    val gitSyncConfig by repository.gitSyncConfig.collectAsState()
+    val isGitSyncing by repository.isGitSyncing.collectAsState()
+    val gitSyncMessage by repository.gitSyncMessage.collectAsState()
+    val pendingGitConflicts by repository.pendingGitConflicts.collectAsState()
+    val gitSyncScope = rememberCoroutineScope()
 
     BackHandler(enabled = activeModal != AppModalScreen.NONE) {
         activeModal = AppModalScreen.NONE
@@ -231,7 +266,46 @@ fun FocusFlowApp() {
                                 dailyGoalHours = dailyGoalHours,
                                 onBackClick = { activeModal = AppModalScreen.NONE },
                                 onUpdateName = { repository.saveUserName(it) },
-                                onUpdateGoal = { repository.updateDailyGoal(it) }
+                                onUpdateGoal = { repository.updateDailyGoal(it) },
+                                gitSyncConfig = gitSyncConfig,
+                                isGitSyncing = isGitSyncing,
+                                gitSyncMessage = gitSyncMessage,
+                                pendingGitConflicts = pendingGitConflicts,
+                                onPushClick = {
+                                    gitSyncScope.launch(Dispatchers.IO) {
+                                        repository.pushToGitHub(gitSyncConfig)
+                                    }
+                                },
+                                onPullClick = {
+                                    gitSyncScope.launch(Dispatchers.IO) {
+                                        repository.pullFromGitHub(gitSyncConfig)
+                                    }
+                                },
+                                onTestConnectionClick = { config, callback ->
+                                    gitSyncScope.launch {
+                                        repository.testGitHubConnection(config, callback)
+                                    }
+                                },
+                                onSaveGitSettingsClick = { config ->
+                                    repository.updateGitConfig(
+                                        config.remoteUrl,
+                                        config.personalAccessToken,
+                                        config.branch,
+                                        config.authorName,
+                                        config.authorEmail
+                                    )
+                                },
+                                onConflictResolve = { conflict, choice ->
+                                    gitSyncScope.launch(Dispatchers.IO) {
+                                        repository.resolveGitConflict(conflict, choice, gitSyncConfig)
+                                    }
+                                },
+                                onAbortConflicts = {
+                                    gitSyncScope.launch(Dispatchers.IO) {
+                                        repository.abortGitConflictMerge()
+                                    }
+                                },
+                                onClearGitMessage = { repository.clearGitMessage() }
                             )
                         }
                     }

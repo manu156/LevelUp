@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,14 +24,32 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
@@ -38,6 +58,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,13 +72,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.manu156.levelup.data.git.ConflictResolutionChoice
+import com.manu156.levelup.data.git.GitConflictItem
+import com.manu156.levelup.data.git.GitSyncConfig
 import com.manu156.levelup.ui.components.AnimeFeedbackStyle
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.DarkButtonText
+import com.manu156.levelup.ui.components.GitConflictDialog
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
 import com.manu156.levelup.ui.components.animePanicShakeClick
 import com.manu156.levelup.ui.components.katanaSlashClick
@@ -75,6 +103,9 @@ import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SettingsScreen(
@@ -82,7 +113,18 @@ fun SettingsScreen(
     dailyGoalHours: Float,
     onBackClick: () -> Unit,
     onUpdateName: (String) -> Unit,
-    onUpdateGoal: (Float) -> Unit
+    onUpdateGoal: (Float) -> Unit,
+    gitSyncConfig: GitSyncConfig,
+    isGitSyncing: Boolean,
+    gitSyncMessage: String?,
+    pendingGitConflicts: List<GitConflictItem>,
+    onPushClick: () -> Unit,
+    onPullClick: () -> Unit,
+    onTestConnectionClick: (GitSyncConfig, (Result<String>) -> Unit) -> Unit,
+    onSaveGitSettingsClick: (GitSyncConfig) -> Unit,
+    onConflictResolve: (GitConflictItem, ConflictResolutionChoice) -> Unit,
+    onAbortConflicts: () -> Unit,
+    onClearGitMessage: () -> Unit
 ) {
     val context = LocalContext.current
     var showNameDialog by remember { mutableStateOf(false) }
@@ -93,6 +135,17 @@ fun SettingsScreen(
 
     var lastDebugAction by remember { mutableStateOf("None (Tap any button below)") }
     var debugClickCount by remember { mutableStateOf(0) }
+
+    // Git sync editing state
+    var repoUrl by remember(gitSyncConfig) { mutableStateOf(gitSyncConfig.remoteUrl) }
+    var personalAccessToken by remember(gitSyncConfig) { mutableStateOf(gitSyncConfig.personalAccessToken) }
+    var branchName by remember(gitSyncConfig) { mutableStateOf(gitSyncConfig.branch) }
+    var authorName by remember(gitSyncConfig) { mutableStateOf(gitSyncConfig.authorName) }
+    var authorEmail by remember(gitSyncConfig) { mutableStateOf(gitSyncConfig.authorEmail) }
+    var isTokenVisible by remember { mutableStateOf(false) }
+    var isConfigExpanded by remember(gitSyncConfig.isConfigured) { mutableStateOf(!gitSyncConfig.isConfigured) }
+    var showConflictDialog by remember { mutableStateOf(false) }
+    var testConnectionStatus by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
@@ -287,6 +340,372 @@ fun SettingsScreen(
                                 uncheckedTrackColor = FocusCardBorder
                             )
                         )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Section: GitHub Session Backup
+            Text(
+                text = "GitHub Session Backup",
+                color = FocusPurpleLight,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AnimeGlowCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudSync,
+                                contentDescription = null,
+                                tint = FocusPurple,
+                                modifier = Modifier.size(26.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
+                                Text(
+                                    text = "GitHub Session Backup",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    color = FocusTextPrimary
+                                )
+                                Text(
+                                    text = "Git Storage & Remote Backup",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = FocusTextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        val isConfigured = gitSyncConfig.isConfigured
+                        Surface(
+                            color = if (isConfigured) Color(0xFF1B873F).copy(alpha = 0.15f) else Color(0xFFE65100).copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.wrapContentWidth()
+                        ) {
+                            Text(
+                                text = if (isConfigured) "CONFIGURED" else "NOT CONFIGURED",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isConfigured) Color(0xFF1B873F) else Color(0xFFE65100),
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    if (gitSyncMessage != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (isGitSyncing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = gitSyncMessage ?: "",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = onClearGitMessage,
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Dismiss",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (pendingGitConflicts.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "${pendingGitConflicts.size} conflict(s) pending",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                Button(
+                                    onClick = { showConflictDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text("Resolve", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+
+                    if (gitSyncConfig.lastSyncTimestamp != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val lastSyncStr = Instant.ofEpochMilli(gitSyncConfig.lastSyncTimestamp!!)
+                            .atZone(ZoneId.systemDefault())
+                            .format(DateTimeFormatter.ofPattern("MMM dd, yyyy • h:mm a"))
+                        val commitSnippet = gitSyncConfig.lastSyncCommitHash?.take(7)?.let { " • Commit $it" } ?: ""
+                        Text(
+                            text = "Last Git Sync: $lastSyncStr$commitSnippet",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = FocusTextSecondary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onPushClick,
+                            enabled = gitSyncConfig.isConfigured && !isGitSyncing,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (isGitSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.CloudUpload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Text("Push to GitHub")
+                        }
+
+                        OutlinedButton(
+                            onClick = onPullClick,
+                            enabled = gitSyncConfig.isConfigured && !isGitSyncing,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDownload,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Pull from GitHub")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Surface(
+                        onClick = { isConfigExpanded = !isConfigExpanded },
+                        color = Color.Transparent,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isConfigExpanded) "Hide Repository Settings" else "Edit Repository Settings",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = FocusPurple,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Icon(
+                                imageVector = if (isConfigExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = FocusPurple,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    if (isConfigExpanded) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = repoUrl,
+                            onValueChange = { repoUrl = it },
+                            label = { Text("Repository URL") },
+                            placeholder = { Text("https://github.com/user/levelup-sessions.git") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        OutlinedTextField(
+                            value = personalAccessToken,
+                            onValueChange = { personalAccessToken = it },
+                            label = { Text("Personal Access Token (PAT)") },
+                            placeholder = { Text("ghp_...") },
+                            singleLine = true,
+                            visualTransformation = if (isTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { isTokenVisible = !isTokenVisible }) {
+                                    Icon(
+                                        imageVector = if (isTokenVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (isTokenVisible) "Hide token" else "Show token"
+                                    )
+                                }
+                            },
+                            supportingText = {
+                                Text("Requires 'repo' scope for private repositories.")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        OutlinedTextField(
+                            value = branchName,
+                            onValueChange = { branchName = it },
+                            label = { Text("Branch") },
+                            placeholder = { Text("main") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = authorName,
+                                onValueChange = { authorName = it },
+                                label = { Text("Git Author Name") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = authorEmail,
+                                onValueChange = { authorEmail = it },
+                                label = { Text("Git Author Email") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+
+                        if (testConnectionStatus != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = testConnectionStatus ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (testConnectionStatus?.contains("successful", ignoreCase = true) == true)
+                                    Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    onTestConnectionClick(gitSyncConfig) { res ->
+                                        testConnectionStatus = res.fold(
+                                            onSuccess = { "Connection successful! Repository accessible." },
+                                            onFailure = { "Connection failed: ${it.localizedMessage ?: it.message}" }
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Test Connection", maxLines = 1)
+                            }
+
+                            Button(
+                                onClick = {
+                                    val config = GitSyncConfig(
+                                        remoteUrl = repoUrl,
+                                        personalAccessToken = personalAccessToken,
+                                        branch = branchName,
+                                        authorName = authorName,
+                                        authorEmail = authorEmail
+                                    )
+                                    onSaveGitSettingsClick(config)
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Save Settings", maxLines = 1)
+                            }
+                        }
                     }
                 }
             }
@@ -609,6 +1028,19 @@ fun SettingsScreen(
                         Text("Close", color = FocusMint)
                     }
                 }
+            )
+        }
+
+        // Git Conflict Resolution Dialog
+        if (showConflictDialog && pendingGitConflicts.isNotEmpty()) {
+            GitConflictDialog(
+                conflicts = pendingGitConflicts,
+                onResolve = { conflict, choice ->
+                    onConflictResolve(conflict, choice)
+                    showConflictDialog = false
+                },
+                onAbort = { onAbortConflicts() },
+                onDismiss = { showConflictDialog = false }
             )
         }
     }
