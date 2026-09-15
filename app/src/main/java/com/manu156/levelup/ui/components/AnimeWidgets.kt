@@ -85,8 +85,7 @@ fun AnimeUserAvatar(
         "preset:chibi" -> R.drawable.avatar_chibi
         "preset:twilight" -> R.drawable.avatar_twilight
         "preset:cat" -> R.drawable.avatar_cat
-        "preset:hug" -> R.drawable.avatar_hug
-        else -> R.drawable.avatar_alex
+        else -> R.drawable.avatar_hug
     }
 
     if (customBitmap != null) {

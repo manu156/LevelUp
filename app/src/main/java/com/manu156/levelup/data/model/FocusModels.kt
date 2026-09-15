@@ -67,6 +67,16 @@ data class DayStats(
     val deepWorkPercent: Int get() = if (totalMinutes > 0) ((deepWorkMinutes * 100) / totalMinutes).toInt() else 0
     val meetingsPercent: Int get() = if (totalMinutes > 0) ((meetingsMinutes * 100) / totalMinutes).toInt() else 0
     val breaksPercent: Int get() = if (totalMinutes > 0) ((breaksMinutes * 100) / totalMinutes).toInt() else 0
+
+    fun formatMinutes(mins: Long): String {
+        val h = mins / 60
+        val m = mins % 60
+        return when {
+            h > 0 && m > 0 -> "${h}h ${m}m"
+            h > 0 -> "${h}h"
+            else -> "${m}m"
+        }
+    }
 }
 
 data class DayProgress(
@@ -77,8 +87,8 @@ data class DayProgress(
 
 data class WeeklyGoalProgress(
     val targetHoursPerDay: Float = 8f,
-    val currentWorkedHoursToday: Float = 3.7f,
-    val completionPercent: Int = 70,
+    val currentWorkedHoursToday: Float = 0f,
+    val completionPercent: Int = 0,
     val days: List<DayProgress> = emptyList()
 )
 
@@ -88,6 +98,6 @@ data class UserProfile(
     val dayStreak: Int = 12,
     val totalWorkHours: Int = 48,
     val dailyGoalHours: Int = 8,
-    val avatarUri: String = "preset:alex"
+    val avatarUri: String = "preset:hug"
 )
 

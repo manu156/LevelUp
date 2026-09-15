@@ -95,7 +95,7 @@ fun DailyBreakdownScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Date Switcher: < Apr 21, 2025 >
+            // Date Switcher (live date from stats)
             Row(
                 modifier = Modifier.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -139,7 +139,7 @@ fun DailyBreakdownScreen(
             // Category rows
             CategoryBreakdownRow(
                 title = "Deep Work",
-                durationStr = "5h 12m",
+                durationStr = stats.formatMinutes(stats.deepWorkMinutes),
                 percentStr = "${stats.deepWorkPercent}%",
                 color = FocusPurple
             )
@@ -148,7 +148,7 @@ fun DailyBreakdownScreen(
 
             CategoryBreakdownRow(
                 title = "Meetings",
-                durationStr = "1h 36m",
+                durationStr = stats.formatMinutes(stats.meetingsMinutes),
                 percentStr = "${stats.meetingsPercent}%",
                 color = FocusCoral
             )
@@ -157,7 +157,7 @@ fun DailyBreakdownScreen(
 
             CategoryBreakdownRow(
                 title = "Breaks",
-                durationStr = "40m",
+                durationStr = stats.formatMinutes(stats.breaksMinutes),
                 percentStr = "${stats.breaksPercent}%",
                 color = FocusAmber
             )

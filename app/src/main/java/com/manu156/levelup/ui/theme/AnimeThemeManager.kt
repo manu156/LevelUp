@@ -15,7 +15,7 @@ data class ThemeArtwork(
     @param:DrawableRes val sleepingCatTimer: Int = R.drawable.cat_sleeping_timer,
     @param:DrawableRes val celebrationHug: Int = R.drawable.celebration_cat_hug,
     @param:DrawableRes val profileBanner: Int = R.drawable.profile_torii_banner,
-    @param:DrawableRes val avatar: Int = R.drawable.avatar_alex,
+    @param:DrawableRes val avatar: Int = R.drawable.avatar_hug,
     @param:DrawableRes val badgeFuji: Int = R.drawable.badge_fuji,
     @param:DrawableRes val insightSticker: Int = R.drawable.anime_girl_peeking
 )

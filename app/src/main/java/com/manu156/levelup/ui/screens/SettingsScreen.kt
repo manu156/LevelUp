@@ -60,10 +60,8 @@ import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
 import com.manu156.levelup.ui.components.animePanicShakeClick
-import com.manu156.levelup.ui.components.animeSpringClick
 import com.manu156.levelup.ui.components.katanaSlashClick
 import com.manu156.levelup.ui.components.nekoTwitchClick
-import com.manu156.levelup.ui.components.sakuraStampClick
 import com.manu156.levelup.ui.components.slimeBounceClick
 import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.AnimeThemeManager
@@ -84,13 +82,10 @@ fun SettingsScreen(
     dailyGoalHours: Float,
     onBackClick: () -> Unit,
     onUpdateName: (String) -> Unit,
-    onUpdateGoal: (Float) -> Unit,
-    onGenerateDummyData: () -> Unit,
-    onDeleteAllData: () -> Unit
+    onUpdateGoal: (Float) -> Unit
 ) {
     val context = LocalContext.current
     var showNameDialog by remember { mutableStateOf(false) }
-    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
 
     var notificationsEnabled by remember { mutableStateOf(true) }
@@ -298,65 +293,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Section 4: Data Management (At the bottom, as requested)
-            Text(
-                text = "Data Management",
-                color = FocusPurpleLight,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            AnimeGlowCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // Action 1: Generate Sample / Dummy Data with Sparkle Burst
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(25.dp))
-                            .background(Color(0xFF232B50))
-                            .border(1.dp, FocusPurple.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
-                            .sparkleBurstClick {
-                                onGenerateDummyData()
-                                Toast.makeText(context, "Sample sessions and data generated ✨", Toast.LENGTH_SHORT).show()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = "Generate", tint = FocusMint, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Generate Dummy Data", color = FocusTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    // Action 2: Delete All Data with Comic Sweat-Drop & Panic Jitter
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(25.dp))
-                            .background(Color(0xFF381C28))
-                            .border(1.dp, FocusCoral.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
-                            .animePanicShakeClick { showDeleteConfirmDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DeleteForever, contentDescription = "Delete", tint = FocusCoral, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Delete All Data", color = FocusCoral, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
             // Section 5: Debug (Anime Button & VFX Inspector)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -454,24 +390,9 @@ fun SettingsScreen(
                         }
                     }
 
-                    // 3. Sakura Quest Stamp
+                    // 3. Comic Panic Jitter
                     Column {
-                        Text("3. Sakura Quest Stamp (200ms delay • Hanko seal & shockwave)", color = FocusTextSecondary, fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        AnimePillButton(
-                            text = "💮 Sakura Hanko Stamp (Check Out)",
-                            gradientColors = listOf(Color(0xFFFF5277), Color(0xFFFF85A1)),
-                            feedbackStyle = AnimeFeedbackStyle.SAKURA_STAMP,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            lastDebugAction = "Sakura Stamp 💮 (200ms delay)"
-                            debugClickCount++
-                        }
-                    }
-
-                    // 4. Comic Panic Jitter
-                    Column {
-                        Text("4. Comic Panic Jitter (180ms delay • 60Hz anxiety & sweat-drop)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Text("3. Comic Panic Jitter (180ms delay • 60Hz anxiety & sweat-drop)", color = FocusTextSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(
                             modifier = Modifier
@@ -494,9 +415,9 @@ fun SettingsScreen(
                         }
                     }
 
-                    // 5. Mahou Sparkle Burst
+                    // 4. Mahou Sparkle Burst
                     Column {
-                        Text("5. Mahou Sparkle Burst (120ms delay • Stardust diamond burst)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Text("4. Mahou Sparkle Burst (120ms delay • Stardust diamond burst)", color = FocusTextSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(
                             modifier = Modifier
@@ -519,9 +440,9 @@ fun SettingsScreen(
                         }
                     }
 
-                    // 6. Neko Ear Twitch
+                    // 5. Neko Ear Twitch
                     Column {
-                        Text("6. Neko Ear Twitch (150ms delay • Ears pop & head tilt)", color = FocusTextSecondary, fontSize = 12.sp)
+                        Text("5. Neko Ear Twitch (150ms delay • Ears pop & head tilt)", color = FocusTextSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(
                             modifier = Modifier
@@ -544,24 +465,9 @@ fun SettingsScreen(
                         }
                     }
 
-                    // 7. Tactile Spring
+                    // 6. Compact Controls & Chips
                     Column {
-                        Text("7. Tactile Spring (70ms delay • Classic bouncy compression)", color = FocusTextSecondary, fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        AnimePillButton(
-                            text = "🌸 Classic Anime Spring",
-                            gradientColors = listOf(Color(0xFFFFB2C9), Color(0xFFFF85A1)),
-                            feedbackStyle = AnimeFeedbackStyle.DEFAULT,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            lastDebugAction = "Classic Spring 🌸 (70ms delay)"
-                            debugClickCount++
-                        }
-                    }
-
-                    // 8. Compact Controls & Chips
-                    Column {
-                        Text("8. Compact Controls & Chips", color = FocusTextSecondary, fontSize = 12.sp)
+                        Text("6. Compact Controls & Chips", color = FocusTextSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -659,36 +565,6 @@ fun SettingsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showNameDialog = false }) {
-                        Text("Cancel", color = FocusTextSecondary)
-                    }
-                }
-            )
-        }
-
-        // Delete Confirmation Dialog
-        if (showDeleteConfirmDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirmDialog = false },
-                containerColor = FocusCardBg,
-                title = { Text("Delete All Data?", color = FocusCoral, fontWeight = FontWeight.Bold) },
-                text = {
-                    Text(
-                        "Are you sure you want to delete all work sessions, daily totals, and streak history? This action cannot be undone.",
-                        color = FocusTextSecondary,
-                        lineHeight = 20.sp
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        onDeleteAllData()
-                        showDeleteConfirmDialog = false
-                        Toast.makeText(context, "All data deleted.", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Text("Delete Everything", color = FocusCoral, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirmDialog = false }) {
                         Text("Cancel", color = FocusTextSecondary)
                     }
                 }

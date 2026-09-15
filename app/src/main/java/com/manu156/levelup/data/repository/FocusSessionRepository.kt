@@ -31,7 +31,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
     private val _isSessionActive = MutableStateFlow(false)
     val isSessionActive: StateFlow<Boolean> = _isSessionActive.asStateFlow()
 
-    private val _activeTaskTitle = MutableStateFlow("Project Apollo")
+    private val _activeTaskTitle = MutableStateFlow("Focus Session")
     val activeTaskTitle: StateFlow<String> = _activeTaskTitle.asStateFlow()
 
     private val _activeCategory = MutableStateFlow(SessionCategory.DEEP_WORK)
@@ -56,10 +56,10 @@ class FocusSessionRepository private constructor(private val context: Context) {
         // Load user name
         val savedName = prefs.getString(KEY_USER_NAME, null)
         val initialName = savedName ?: "Alex"
-        val savedStreak = prefs.getInt(KEY_USER_STREAK, 12)
-        val savedTotalWork = prefs.getInt(KEY_TOTAL_WORK, 48)
+        val savedStreak = prefs.getInt(KEY_USER_STREAK, 0)
+        val savedTotalWork = prefs.getInt(KEY_TOTAL_WORK, 0)
         val savedGoal = prefs.getFloat(KEY_DAILY_GOAL, 8f)
-        val savedAvatar = prefs.getString(KEY_AVATAR_URI, "preset:alex") ?: "preset:alex"
+        val savedAvatar = prefs.getString(KEY_AVATAR_URI, "preset:hug") ?: "preset:hug"
 
         _dailyGoalHours.value = savedGoal
         _userProfile.value = UserProfile(
@@ -70,12 +70,6 @@ class FocusSessionRepository private constructor(private val context: Context) {
             dailyGoalHours = savedGoal.toInt(),
             avatarUri = savedAvatar
         )
-
-        // Load sessions
-        val hasGenerated = prefs.getBoolean(KEY_HAS_DATA, true)
-        if (hasGenerated) {
-            _todaySessions.value = createDefaultSessions()
-        }
 
         // Check if there was an ongoing session saved
         val savedStartTime = prefs.getLong(KEY_ACTIVE_START, 0L)
@@ -192,41 +186,6 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _userProfile.update { it.copy(dailyGoalHours = hours.toInt()) }
     }
 
-    fun generateDummyData() {
-        prefs.edit().putBoolean(KEY_HAS_DATA, true).apply()
-        _todaySessions.value = createDefaultSessions()
-        _userProfile.update {
-            it.copy(
-                dayStreak = 12,
-                totalWorkHours = 48,
-                dailyGoalHours = 8
-            )
-        }
-        prefs.edit()
-            .putInt(KEY_USER_STREAK, 12)
-            .putInt(KEY_TOTAL_WORK, 48)
-            .putFloat(KEY_DAILY_GOAL, 8f)
-            .apply()
-    }
-
-    fun deleteAllData() {
-        cancelSession()
-        _todaySessions.value = emptyList()
-        _userProfile.update {
-            it.copy(
-                dayStreak = 0,
-                totalWorkHours = 0
-            )
-        }
-        prefs.edit()
-            .putBoolean(KEY_HAS_DATA, false)
-            .putInt(KEY_USER_STREAK, 0)
-            .putInt(KEY_TOTAL_WORK, 0)
-            .remove(KEY_ACTIVE_START)
-            .remove(KEY_ACTIVE_TITLE)
-            .apply()
-    }
-
     fun getDayStats(): DayStats {
         val sessions = _todaySessions.value
         var deepWorkMins = 0L
@@ -242,36 +201,47 @@ class FocusSessionRepository private constructor(private val context: Context) {
             }
         }
 
-        val totalDeep = if (sessions.isNotEmpty()) deepWorkMins.coerceAtLeast(312L) else 0L
-        val totalMeet = if (sessions.isNotEmpty()) meetingMins.coerceAtLeast(96L) else 0L
-        val totalBreak = if (sessions.isNotEmpty()) breakMins.coerceAtLeast(40L) else 0L
-        val totalMins = totalDeep + totalMeet + totalBreak
+        val totalMins = deepWorkMins + meetingMins + breakMins
+        val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
 
         return DayStats(
-            dateLabel = "Apr 21, 2025",
+            dateLabel = sdf.format(java.util.Date()),
             totalMinutes = totalMins,
-            deepWorkMinutes = totalDeep,
-            meetingsMinutes = totalMeet,
-            breaksMinutes = totalBreak,
+            deepWorkMinutes = deepWorkMins,
+            meetingsMinutes = meetingMins,
+            breaksMinutes = breakMins,
             sessionCount = sessions.size,
-            diffVsYesterdayMinutes = if (sessions.isNotEmpty()) 120 else 0
+            diffVsYesterdayMinutes = 0
         )
     }
 
     fun getWeeklyGoalProgress(): WeeklyGoalProgress {
-        val days = listOf(
-            DayProgress("Mon", 4.2f),
-            DayProgress("Tue", 6.0f),
-            DayProgress("Wed", 7.2f),
-            DayProgress("Thu", 4.8f),
-            DayProgress("Fri", 4.4f),
-            DayProgress("Sat", 8.2f, isTargetReached = true),
-            DayProgress("Sun", 4.8f)
-        )
+        val sessions = _todaySessions.value
+        val totalMinsToday = sessions.sumOf { it.durationMinutes }
+        val hoursToday = totalMinsToday / 60f
+        
+        // In a real app, we'd fetch the last 7 days. 
+        // For this prototype, we'll just show today's data and zeros for others if empty
+        val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        val calendar = Calendar.getInstance()
+        val currentDayOfWeek = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7 // 0=Mon, ..., 6=Sun
+        
+        val days = dayNames.mapIndexed { index, name ->
+            if (index == currentDayOfWeek) {
+                DayProgress(name, hoursToday, isTargetReached = hoursToday >= _dailyGoalHours.value)
+            } else {
+                DayProgress(name, 0f)
+            }
+        }
+
+        val completionPercent = if (_dailyGoalHours.value > 0) {
+            ((hoursToday / _dailyGoalHours.value) * 100).toInt().coerceAtMost(100)
+        } else 0
+
         return WeeklyGoalProgress(
             targetHoursPerDay = _dailyGoalHours.value,
-            currentWorkedHoursToday = 3.7f,
-            completionPercent = 70,
+            currentWorkedHoursToday = hoursToday,
+            completionPercent = completionPercent,
             days = days
         )
     }
@@ -282,7 +252,6 @@ class FocusSessionRepository private constructor(private val context: Context) {
         private const val KEY_USER_STREAK = "user_streak"
         private const val KEY_TOTAL_WORK = "total_work"
         private const val KEY_DAILY_GOAL = "daily_goal"
-        private const val KEY_HAS_DATA = "has_data"
         private const val KEY_ACTIVE_START = "active_session_start"
         private const val KEY_ACTIVE_TITLE = "active_session_title"
 
@@ -293,36 +262,6 @@ class FocusSessionRepository private constructor(private val context: Context) {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: FocusSessionRepository(context.applicationContext).also { INSTANCE = it }
             }
-        }
-
-        private fun createDefaultSessions(): List<WorkSession> {
-            val cal = Calendar.getInstance()
-            cal.set(Calendar.HOUR_OF_DAY, 16)
-            cal.set(Calendar.MINUTE, 20)
-            val s3Start = cal.timeInMillis
-            cal.set(Calendar.HOUR_OF_DAY, 17)
-            cal.set(Calendar.MINUTE, 5)
-            val s3End = cal.timeInMillis
-
-            cal.set(Calendar.HOUR_OF_DAY, 13)
-            cal.set(Calendar.MINUTE, 15)
-            val s2Start = cal.timeInMillis
-            cal.set(Calendar.HOUR_OF_DAY, 14)
-            cal.set(Calendar.MINUTE, 48)
-            val s2End = cal.timeInMillis
-
-            cal.set(Calendar.HOUR_OF_DAY, 9)
-            cal.set(Calendar.MINUTE, 12)
-            val s1Start = cal.timeInMillis
-            cal.set(Calendar.HOUR_OF_DAY, 12)
-            cal.set(Calendar.MINUTE, 3)
-            val s1End = cal.timeInMillis
-
-            return listOf(
-                WorkSession("1", "Architecture & API design", SessionCategory.DEEP_WORK, s1Start, s1End, "Work"),
-                WorkSession("2", "Client alignment & review", SessionCategory.MEETINGS, s2Start, s2End, "Work"),
-                WorkSession("3", "Component polish & animations", SessionCategory.DEEP_WORK, s3Start, s3End, "Work")
-            )
         }
     }
 }

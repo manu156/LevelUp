@@ -249,7 +249,7 @@ fun CheckInScreen(
                         )
                     },
                     onClick = {
-                        val title = if (taskTitle.isBlank()) "Project Apollo" else taskTitle
+                        val title = if (taskTitle.isBlank()) "Focus Session" else taskTitle
                         onStartSession(title, selectedCategory)
                     }
                 )

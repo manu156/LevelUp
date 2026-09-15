@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.manu156.levelup.data.model.WeeklyGoalProgress
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.CatFaceIcon
@@ -53,11 +54,21 @@ enum class StatsTab {
 
 @Composable
 fun StatsScreen(
+    weeklyGoalProgress: WeeklyGoalProgress,
     onDailyBreakdownClick: () -> Unit,
     onInsightsClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(StatsTab.WEEK) }
 
+    val totalHoursToday = weeklyGoalProgress.currentWorkedHoursToday
+    val totalMinsToday = (totalHoursToday * 60).toInt()
+    val displayHours = totalMinsToday / 60
+    val displayMins = totalMinsToday % 60
+    val totalTimeStr = if (displayHours > 0) "${displayHours}h ${displayMins}m" else "${displayMins}m"
+
+    // No historical data tracked yet — all tabs show live week total honestly.
+    val displayTotalTime = totalTimeStr
+    val sessionCount = weeklyGoalProgress.days.sumOf { if (it.hours > 0) 1 else 0 }
 
     Box(
         modifier = Modifier
@@ -137,25 +148,42 @@ fun StatsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (selectedTab == StatsTab.WEEK) "34h 12m" else if (selectedTab == StatsTab.MONTH) "142h 30m" else "1,680h",
+                        text = displayTotalTime,
                         color = FocusTextPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.ArrowUpward,
-                            contentDescription = "Increase",
-                            tint = FocusMint,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        if (totalMinsToday > 0) {
+                            Icon(
+                                imageVector = Icons.Rounded.ArrowUpward,
+                                contentDescription = "Increase",
+                                tint = FocusMint,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$totalTimeStr this week • ${weeklyGoalProgress.completionPercent}% of daily goal",
+                                color = FocusMint,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        } else {
+                            Text(
+                                text = "No work recorded yet",
+                                color = FocusTextMuted,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    if (selectedTab != StatsTab.WEEK) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "12% vs. last week",
-                            color = FocusMint,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = "Full history coming soon — showing this week",
+                            color = FocusTextMuted,
+                            fontSize = 12.sp
                         )
                     }
 
@@ -163,6 +191,7 @@ fun StatsScreen(
 
                     // Rounded Capsule Bar Chart
                     RoundedCapsuleBarChart(
+                        days = weeklyGoalProgress.days.map { it.dayName to it.hours },
                         height = 170.dp
                     )
                 }

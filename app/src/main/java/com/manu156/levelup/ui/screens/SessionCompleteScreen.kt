@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,7 +52,10 @@ fun SessionCompleteScreen(
     session: WorkSession?,
     onBackToHomeClick: () -> Unit
 ) {
-    val durationStr = session?.formattedDuration() ?: "3h 24m"
+    val durationStr = session?.formattedDuration() ?: "0m"
+    val timeFmt = remember { java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()) }
+    val startedAtStr = session?.let { timeFmt.format(java.util.Date(it.startTimeMillis)) } ?: "—"
+    val checkedOutAtStr = session?.let { timeFmt.format(java.util.Date(it.endTimeMillis)) } ?: "—"
 
     Box(
         modifier = Modifier
@@ -161,7 +165,7 @@ fun SessionCompleteScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "9:15 AM",
+                            text = startedAtStr,
                             color = FocusTextPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold
@@ -176,7 +180,7 @@ fun SessionCompleteScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "12:39 PM",
+                            text = checkedOutAtStr,
                             color = FocusTextPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold
@@ -187,11 +191,11 @@ fun SessionCompleteScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Back to Home Button with Sakura Quest Stamp feedback!
+            // Back to Home Button with Sparkle Burst feedback!
             AnimePillButton(
                 text = "Back to Home",
                 modifier = Modifier.fillMaxWidth(),
-                feedbackStyle = AnimeFeedbackStyle.SAKURA_STAMP,
+                feedbackStyle = AnimeFeedbackStyle.SPARKLE_BURST,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Home,

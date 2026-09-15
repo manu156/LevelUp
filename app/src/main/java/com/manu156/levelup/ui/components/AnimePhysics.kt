@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -49,10 +48,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 enum class AnimeFeedbackStyle {
-    DEFAULT,
     SLIME,
     KATANA,
-    SAKURA_STAMP,
     NEKO_TWITCH,
     SPARKLE_BURST,
     PANIC_SHAKE
@@ -209,36 +206,7 @@ fun rememberIdleSway(angleDegrees: Float = 5f, periodMs: Int = 2400): Float {
     return rotation
 }
 
-// 4. Anime Tactile Press with Spring Compression & Sparkle Burst
-fun Modifier.animeSpringClick(
-    enabled: Boolean = true,
-    onClick: () -> Unit
-): Modifier = composed {
-    val coroutineScope = rememberCoroutineScope()
-    val scale = remember { Animatable(1f) }
-    var isBusy by remember { mutableStateOf(false) }
-
-    this
-        .scale(scale.value)
-        .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            enabled = enabled
-        ) {
-            if (isBusy) return@clickable
-            isBusy = true
-            coroutineScope.launch {
-                scale.animateTo(0.92f, animationSpec = spring(stiffness = Spring.StiffnessMedium))
-                delay(70)
-                onClick()
-                scale.animateTo(1.04f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                scale.animateTo(1f, animationSpec = spring(stiffness = Spring.StiffnessLow))
-                isBusy = false
-            }
-        }
-}
-
-// 5. Slime / Mochi Squash & Stretch (Jelly Physics + Sheen)
+// 4. Slime / Mochi Squash & Stretch (Jelly Physics + Sheen)
 fun Modifier.slimeBounceClick(
     enabled: Boolean = true,
     onClick: () -> Unit
@@ -491,100 +459,7 @@ fun Modifier.nekoTwitchClick(
         }
 }
 
-// 8. Sakura Quest Stamp (Hanko Seal + Blossom Shockwave)
-fun Modifier.sakuraStampClick(
-    enabled: Boolean = true,
-    onClick: () -> Unit
-): Modifier = composed {
-    val coroutineScope = rememberCoroutineScope()
-    val scale = remember { Animatable(1f) }
-    val stampScale = remember { Animatable(0f) }
-    val stampAlpha = remember { Animatable(0f) }
-    val ringExpansion = remember { Animatable(0f) }
-    var isBusy by remember { mutableStateOf(false) }
-
-    this
-        .scale(scale.value)
-        .drawWithContent {
-            drawContent()
-            val sa = stampAlpha.value
-            if (sa > 0f) {
-                val cx = size.width / 2f
-                val cy = size.height / 2f
-                val ringRadius = (size.minDimension * 0.8f + ringExpansion.value * size.minDimension * 0.6f)
-
-                // Expanding sakura shockwave ring
-                drawCircle(
-                    color = Color(0xFFFF85A1).copy(alpha = sa * 0.65f),
-                    radius = ringRadius,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 3.dp.toPx() * (1f - ringExpansion.value).coerceAtLeast(0.1f))
-                )
-
-                // Circular Hanko stamp
-                val stampRadius = (size.minDimension * 0.38f) * stampScale.value
-                drawCircle(
-                    color = Color(0xFFFF5277).copy(alpha = sa),
-                    radius = stampRadius,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 2.5.dp.toPx())
-                )
-                drawCircle(
-                    color = Color(0xFFFF85A1).copy(alpha = sa * 0.8f),
-                    radius = stampRadius * 0.82f,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 1.dp.toPx())
-                )
-                for (i in 0 until 5) {
-                    val angle = (i * 72f) * (PI.toFloat() / 180f)
-                    val petalDist = stampRadius * 0.45f
-                    val px = cx + cos(angle) * petalDist
-                    val py = cy + sin(angle) * petalDist
-                    drawCircle(
-                        color = Color(0xFFFFD1DC).copy(alpha = sa),
-                        radius = 2.5.dp.toPx() * stampScale.value,
-                        center = Offset(px, py)
-                    )
-                }
-                drawCircle(
-                    color = Color(0xFFFFEAA7).copy(alpha = sa),
-                    radius = 3.dp.toPx() * stampScale.value,
-                    center = Offset(cx, cy)
-                )
-            }
-        }
-        .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            enabled = enabled
-        ) {
-            if (isBusy) return@clickable
-            isBusy = true
-            coroutineScope.launch {
-                scale.animateTo(0.86f, tween(70, easing = FastOutSlowInEasing))
-                launch {
-                    stampAlpha.snapTo(1f)
-                    stampScale.snapTo(1.6f)
-                    stampScale.animateTo(1.0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessHigh))
-                    ringExpansion.snapTo(0f)
-                    ringExpansion.animateTo(1f, tween(260, easing = FastOutSlowInEasing))
-                    delay(100)
-                    stampAlpha.animateTo(0f, tween(180))
-                }
-                launch {
-                    scale.animateTo(1.06f, spring(dampingRatio = 0.5f))
-                    scale.animateTo(1f, spring(stiffness = Spring.StiffnessLow))
-                }
-                // Stamp slams down firmly, then triggers navigation!
-                delay(200)
-                onClick()
-                delay(150)
-                isBusy = false
-            }
-        }
-}
-
-// 9. Mahou Sparkle Burst (Stardust Diamond Explosion)
+// 8. Mahou Sparkle Burst (Stardust Diamond Explosion)
 fun Modifier.sparkleBurstClick(
     enabled: Boolean = true,
     sparkleCount: Int = 8,
@@ -731,8 +606,6 @@ fun Modifier.animeButtonFeedback(
     AnimeFeedbackStyle.KATANA -> this.katanaSlashClick(enabled = enabled, onClick = onClick)
     AnimeFeedbackStyle.SLIME -> this.slimeBounceClick(enabled = enabled, onClick = onClick)
     AnimeFeedbackStyle.NEKO_TWITCH -> this.nekoTwitchClick(enabled = enabled, onClick = onClick)
-    AnimeFeedbackStyle.SAKURA_STAMP -> this.sakuraStampClick(enabled = enabled, onClick = onClick)
     AnimeFeedbackStyle.SPARKLE_BURST -> this.sparkleBurstClick(enabled = enabled, onClick = onClick)
     AnimeFeedbackStyle.PANIC_SHAKE -> this.animePanicShakeClick(enabled = enabled, onClick = onClick)
-    AnimeFeedbackStyle.DEFAULT -> this.animeSpringClick(enabled = enabled, onClick = onClick)
 }

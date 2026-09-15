@@ -66,9 +66,19 @@ import com.manu156.levelup.ui.theme.FocusTextSecondary
 @Composable
 fun GoalsScreen(
     dailyGoalHours: Float,
-    onUpdateGoal: (Float) -> Unit
+    onUpdateGoal: (Float) -> Unit,
+    weeklyGoalProgress: com.manu156.levelup.data.model.WeeklyGoalProgress? = null
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
+
+    val workedHours = weeklyGoalProgress?.currentWorkedHoursToday ?: 0f
+    val workedMinsTotal = (workedHours * 60).toInt()
+    val workedH = workedMinsTotal / 60
+    val workedM = workedMinsTotal % 60
+    val workedStr = if (workedH > 0) "${workedH}h ${workedM}m" else "${workedM}m"
+    val progressFraction = if (dailyGoalHours > 0) (workedHours / dailyGoalHours).coerceIn(0f, 1f) else 0f
+    val weeklyPercent = weeklyGoalProgress?.completionPercent ?: 0
+    val chartDays = weeklyGoalProgress?.days?.map { it.dayName to it.hours }
 
     Box(
         modifier = Modifier
@@ -167,7 +177,7 @@ fun GoalsScreen(
                         horizontalArrangement = Arrangement.End
                     ) {
                         Text(
-                            text = "3h 42m / ${dailyGoalHours.toInt()}h",
+                            text = "$workedStr / ${dailyGoalHours.toInt()}h",
                             color = FocusMint,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -177,7 +187,7 @@ fun GoalsScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     LinearProgressIndicator(
-                        progress = { 3.7f / dailyGoalHours },
+                        progress = { progressFraction },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -211,7 +221,7 @@ fun GoalsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "70%",
+                            text = "$weeklyPercent%",
                             color = FocusTextSecondary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
@@ -220,7 +230,11 @@ fun GoalsScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    RoundedCapsuleBarChart(height = 150.dp)
+                    if (chartDays != null) {
+                        RoundedCapsuleBarChart(days = chartDays, height = 150.dp)
+                    } else {
+                        RoundedCapsuleBarChart(height = 150.dp)
+                    }
 
                     Spacer(modifier = Modifier.height(22.dp))
 

@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Icon
@@ -64,11 +63,27 @@ import com.manu156.levelup.ui.theme.FocusTextSecondary
 fun ActiveSessionScreen(
     taskTitle: String,
     elapsedSeconds: Long,
+    dailyGoalHours: Float = 8f,
+    todayTotalMinutes: Long = 0L,
     onBackClick: () -> Unit,
-    onCheckOutClick: (notes: String) -> Unit
+    onCheckOutClick: (notes: String) -> Unit,
+    onCancelSession: () -> Unit = {}
 ) {
     var notes by remember { mutableStateOf("") }
     var isEditingNotes by remember { mutableStateOf(false) }
+
+    val liveTotalSecs = todayTotalMinutes * 60 + elapsedSeconds
+    val liveTotalMins = liveTotalSecs / 60
+    val totalH = liveTotalMins / 60
+    val totalM = liveTotalMins % 60
+    val totalStr = if (totalH > 0) "${totalH}h ${totalM}m" else "${totalM}m"
+    val dayProgress = if (dailyGoalHours > 0) {
+        (liveTotalSecs / (dailyGoalHours * 3600f)).coerceIn(0f, 1f)
+    } else 0f
+    val elapsedMins = elapsedSeconds / 60
+    val elapsedH = elapsedMins / 60
+    val elapsedM = elapsedMins % 60
+    val elapsedStr = if (elapsedH > 0) "${elapsedH}h ${elapsedM}m" else "${elapsedM}m"
 
     Box(
         modifier = Modifier
@@ -87,7 +102,7 @@ fun ActiveSessionScreen(
         ) {
             Spacer(modifier = Modifier.height(36.dp))
 
-            // Top bar: Back arrow + More options
+            // Top bar: Back arrow + live task title (removed dead options menu)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,28 +124,32 @@ fun ActiveSessionScreen(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(FocusCardBg),
-                    contentAlignment = Alignment.Center
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = FocusTextPrimary,
-                        modifier = Modifier.size(20.dp)
+                    Text(
+                        text = taskTitle.ifBlank { "Focus Session" },
+                        color = FocusTextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "in progress • $elapsedStr",
+                        color = FocusMint,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Sleeping Cat Timer Gauge
+            // Sleeping Cat Timer Gauge (live elapsed, progress vs daily goal)
             CircularTimerGauge(
-                elapsedSeconds = if (elapsedSeconds == 0L) (3 * 3600 + 24 * 60 + 17) else elapsedSeconds,
-                progressFraction = 0.65f,
+                elapsedSeconds = elapsedSeconds,
+                progressFraction = dayProgress,
                 size = 270.dp
             )
 
@@ -153,7 +172,7 @@ fun ActiveSessionScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "3h 42m",
+                        text = totalStr,
                         color = FocusTextPrimary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
@@ -168,7 +187,7 @@ fun ActiveSessionScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "2h vs. yesterday",
+                            text = "$elapsedStr this session / ${dailyGoalHours.toInt()}h goal",
                             color = FocusMint,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -177,9 +196,9 @@ fun ActiveSessionScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Rounded horizontal progress bar
+                    // Rounded horizontal progress bar (live day progress)
                     LinearProgressIndicator(
-                        progress = { 0.46f },
+                        progress = { dayProgress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
@@ -271,16 +290,26 @@ fun ActiveSessionScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Coral Check Out Pill Button with Sakura Quest Stamp Hanko feedback!
+            // Coral Check Out Pill Button with Slime Squash feedback!
             AnimePillButton(
                 text = "Check Out",
                 modifier = Modifier.fillMaxWidth(),
-                feedbackStyle = AnimeFeedbackStyle.SAKURA_STAMP,
+                feedbackStyle = AnimeFeedbackStyle.SLIME,
                 icon = {
                     CatFaceIcon(tint = DarkButtonText, size = 20.dp)
                 },
                 gradientColors = listOf(FocusCoral, FocusCoralDark),
                 onClick = { onCheckOutClick(notes) }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Cancel session",
+                color = FocusTextMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable { onCancelSession() }
             )
 
             Spacer(modifier = Modifier.height(36.dp))

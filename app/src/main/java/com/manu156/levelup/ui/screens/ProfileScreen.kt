@@ -417,11 +417,10 @@ fun ProfileScreen(
         // Avatar Picker Dialog
         if (showAvatarDialog) {
             val presets = listOf(
-                Pair("preset:alex", "Alex"),
+                Pair("preset:hug", "Hug"),
                 Pair("preset:chibi", "Chibi"),
                 Pair("preset:twilight", "Twilight"),
-                Pair("preset:cat", "Neko"),
-                Pair("preset:hug", "Hug")
+                Pair("preset:cat", "Neko")
             )
 
             AlertDialog(

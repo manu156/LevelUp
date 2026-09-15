@@ -127,6 +127,7 @@ fun FocusFlowApp() {
                                         avatarUri = userProfile.avatarUri,
                                         sessions = todaySessions,
                                         dayStats = repository.getDayStats(),
+                                        dailyGoalHours = dailyGoalHours,
                                         onCheckInClick = {
                                             activeModal = if (isSessionActive) {
                                                 AppModalScreen.ACTIVE_SESSION
@@ -140,6 +141,7 @@ fun FocusFlowApp() {
 
                                 NavTab.STATS -> {
                                     StatsScreen(
+                                        weeklyGoalProgress = repository.getWeeklyGoalProgress(),
                                         onDailyBreakdownClick = {
                                             activeModal = AppModalScreen.DAILY_BREAKDOWN
                                         },
@@ -152,7 +154,8 @@ fun FocusFlowApp() {
                                 NavTab.GOALS -> {
                                     GoalsScreen(
                                         dailyGoalHours = dailyGoalHours,
-                                        onUpdateGoal = { repository.updateDailyGoal(it) }
+                                        onUpdateGoal = { repository.updateDailyGoal(it) },
+                                        weeklyGoalProgress = repository.getWeeklyGoalProgress()
                                     )
                                 }
 
@@ -181,11 +184,17 @@ fun FocusFlowApp() {
                             ActiveSessionScreen(
                                 taskTitle = activeTaskTitle,
                                 elapsedSeconds = elapsedSeconds,
+                                dailyGoalHours = dailyGoalHours,
+                                todayTotalMinutes = repository.getDayStats().totalMinutes,
                                 onBackClick = { activeModal = AppModalScreen.NONE },
                                 onCheckOutClick = { notes ->
                                     val session = repository.checkoutSession(notes)
                                     completedSession = session
                                     activeModal = AppModalScreen.SESSION_COMPLETE
+                                },
+                                onCancelSession = {
+                                    repository.cancelSession()
+                                    activeModal = AppModalScreen.NONE
                                 }
                             )
                         }
@@ -209,6 +218,9 @@ fun FocusFlowApp() {
 
                         AppModalScreen.INSIGHTS -> {
                             InsightsScreen(
+                                sessions = todaySessions,
+                                dayStats = repository.getDayStats(),
+                                hasData = todaySessions.isNotEmpty(),
                                 onBackClick = { activeModal = AppModalScreen.NONE }
                             )
                         }
@@ -219,9 +231,7 @@ fun FocusFlowApp() {
                                 dailyGoalHours = dailyGoalHours,
                                 onBackClick = { activeModal = AppModalScreen.NONE },
                                 onUpdateName = { repository.saveUserName(it) },
-                                onUpdateGoal = { repository.updateDailyGoal(it) },
-                                onGenerateDummyData = { repository.generateDummyData() },
-                                onDeleteAllData = { repository.deleteAllData() }
+                                onUpdateGoal = { repository.updateDailyGoal(it) }
                             )
                         }
                     }

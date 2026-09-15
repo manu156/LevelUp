@@ -73,9 +73,24 @@ data class InsightDetail(
 
 @Composable
 fun InsightsScreen(
+    sessions: List<com.manu156.levelup.data.model.WorkSession> = emptyList(),
+    dayStats: com.manu156.levelup.data.model.DayStats? = null,
+    hasData: Boolean = sessions.isNotEmpty(),
     onBackClick: () -> Unit = {}
 ) {
     var selectedInsight by remember { mutableStateOf<InsightDetail?>(null) }
+
+    val longest = remember(sessions) { sessions.maxByOrNull { it.durationMillis } }
+    val longestStr = longest?.formattedDuration() ?: "—"
+    val dateFmt = remember { java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()) }
+    val hourFmt = remember { java.text.SimpleDateFormat("h a", java.util.Locale.getDefault()) }
+    val longestDateStr = longest?.let { dateFmt.format(java.util.Date(it.endTimeMillis)) } ?: ""
+    val totalStr = dayStats?.totalHoursStr ?: run {
+        val mins = sessions.sumOf { it.durationMinutes }
+        "${mins / 60}h ${mins % 60}m"
+    }
+    val peakHourStr = longest?.let { hourFmt.format(java.util.Date(it.startTimeMillis)) } ?: "—"
+    val sessionCount = sessions.size
 
     Box(
         modifier = Modifier
@@ -134,25 +149,76 @@ fun InsightsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Hero Banner Card: You're on track! + Anime girl sticker
-            AnimeGlowCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sparkleBurstClick {
-                        selectedInsight = InsightDetail(
-                            title = "Weekly Velocity",
-                            subtitle = "Overall Progress",
-                            highlightValue = "+12% vs. Last Week",
-                            description = "Your dedicated focus time increased significantly compared to the previous week. You maintained consistent output across morning and afternoon sessions.",
-                            tips = listOf(
-                                "Maintain your regular morning start time at 9:00 AM.",
-                                "Keep daily work blocks between 45–90 minutes with 10-minute breaks.",
-                                "Drink water and stretch between sessions to avoid fatigue."
-                            ),
-                            badgeIcon = {
+            if (!hasData) {
+                AnimeGlowCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "🐾", fontSize = 40.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "No insights yet",
+                            color = FocusTextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Complete some focus sessions to see your productivity trends and personalized tips! ✨",
+                            color = FocusTextSecondary,
+                            fontSize = 14.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            } else {
+                // Hero Banner Card: live summary + Anime girl sticker
+                AnimeGlowCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .sparkleBurstClick {
+                            selectedInsight = InsightDetail(
+                                title = "Today's Output",
+                                subtitle = "Overall Progress",
+                                highlightValue = "$sessionCount session${if (sessionCount == 1) "" else "s"} • $totalStr today",
+                                description = "This reflects only the sessions recorded on this device so far. No historical comparison yet — keep checking in to build trends.",
+                                tips = listOf(
+                                    "Keep daily work blocks between 45–90 minutes with 10-minute breaks.",
+                                    "Check in every session so totals stay accurate.",
+                                    "Drink water and stretch between sessions to avoid fatigue."
+                                ),
+                                badgeIcon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1B3835)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lightbulb,
+                                            contentDescription = "Idea",
+                                            tint = FocusMint,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(42.dp)
+                                        .size(32.dp)
                                         .clip(CircleShape)
                                         .background(Color(0xFF1B3835)),
                                     contentAlignment = Alignment.Center
@@ -161,311 +227,286 @@ fun InsightsScreen(
                                         imageVector = Icons.Default.Lightbulb,
                                         contentDescription = "Idea",
                                         tint = FocusMint,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = if (sessionCount > 0) "Nice progress!" else "Let's begin!",
+                                    color = FocusTextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                        )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = if (sessionCount > 0) "You've logged $sessionCount session${if (sessionCount == 1) "" else "s"} totalling $totalStr today. Keep it up!" else "No sessions yet today.",
+                                color = FocusTextSecondary,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Anime girl peeking sticker
+                        Box(
+                            modifier = Modifier
+                                .size(76.dp)
+                                .clip(CircleShape)
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.anime_girl_peeking),
+                                contentDescription = "Anime Cheer",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
-            ) {
-                Row(
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Insight Card 1: Best Day (live — only today is tracked)
+                AnimeGlowCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .sparkleBurstClick {
+                            selectedInsight = InsightDetail(
+                                title = "Best Day So Far",
+                                subtitle = "Today's Performance",
+                                highlightValue = "Today • $totalStr",
+                                description = "Only today's sessions are tracked on this device so far ($sessionCount session${if (sessionCount == 1) "" else "s"} totalling $totalStr). Weekly history is not recorded yet.",
+                                tips = listOf(
+                                    "Check in consistently so every day counts.",
+                                    "Protect one distraction-free block each day.",
+                                    "Review tomorrow to spot your real best day."
+                                ),
+                                badgeIcon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF28231E)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CrownIcon(tint = FocusAmber, size = 22.dp)
+                                    }
+                                }
+                            )
+                        }
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF1B3835)),
+                                    .background(Color(0xFF28231E)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CrownIcon(tint = FocusAmber, size = 22.dp)
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Best day",
+                                    color = FocusTextSecondary,
+                                    fontSize = 13.sp
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Today  $totalStr",
+                                    color = FocusTextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = "View",
+                            tint = FocusTextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Insight Card 2: Longest Session (live)
+                AnimeGlowCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .sparkleBurstClick {
+                            selectedInsight = InsightDetail(
+                                title = "Endurance Focus Record",
+                                subtitle = "Longest Continuous Session",
+                                highlightValue = "$longestStr${if (longestDateStr.isNotEmpty()) " • $longestDateStr" else ""}",
+                                description = longest?.let { "Your longest recorded session is \"${it.title}\" at $longestStr. Great deep work!" } ?: "No sessions recorded yet.",
+                                tips = listOf(
+                                    "Ensure proper hydration during long focus sessions.",
+                                    "Use the 20-20-20 rule to rest your eyes periodically.",
+                                    "Follow up long blocks with light walking or stretching."
+                                ),
+                                badgeIcon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF252646)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = "Clock",
+                                            tint = FocusPurpleLight,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF252646)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Lightbulb,
-                                    contentDescription = "Idea",
-                                    tint = FocusMint,
-                                    modifier = Modifier.size(18.dp)
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = "Clock",
+                                    tint = FocusPurpleLight,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "You're on track!",
-                                color = FocusTextPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Longest session",
+                                    color = FocusTextSecondary,
+                                    fontSize = 13.sp
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (longestDateStr.isNotEmpty()) "$longestStr  ($longestDateStr)" else longestStr,
+                                    color = FocusTextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
-                            text = "You've increased your work hours by 12% compared to last week. Keep it up!",
-                            color = FocusTextSecondary,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = "View",
+                            tint = FocusTextMuted,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                    // Anime girl peeking sticker
-                    Box(
+                // Insight Card 3: Most Productive Time (live — based on longest session start)
+                AnimeGlowCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .sparkleBurstClick {
+                            selectedInsight = InsightDetail(
+                                title = "Flow Window",
+                                subtitle = "When You Focus Best",
+                                highlightValue = if (longest != null) "Around $peakHourStr" else "No data yet",
+                                description = longest?.let { "Your longest session started around $peakHourStr (\"${it.title}\"). More sessions will reveal your true peak window." } ?: "Log a few sessions to discover when you focus best.",
+                                tips = listOf(
+                                    "Protect your best window: decline non-essential meetings.",
+                                    "Schedule your hardest work in that window.",
+                                    "Keep notifications silenced or phone in another room."
+                                ),
+                                badgeIcon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF382348)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Bolt,
+                                            contentDescription = "Lightning",
+                                            tint = Color(0xFFD67EFF),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                ) {
+                    Row(
                         modifier = Modifier
-                            .size(76.dp)
-                            .clip(CircleShape)
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
-                            painter = painterResource(R.drawable.anime_girl_peeking),
-                            contentDescription = "Anime Cheer",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Insight Card 1: Best Day
-            AnimeGlowCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sparkleBurstClick {
-                        selectedInsight = InsightDetail(
-                            title = "Peak Day Record",
-                            subtitle = "Best Day Performance",
-                            highlightValue = "Thursday • 8h 12m",
-                            description = "Thursday was your highest output day this week. You completed 4 uninterrupted focus sessions with an impressive 92% deep work completion rate.",
-                            tips = listOf(
-                                "Zero interruptions were logged during your morning session.",
-                                "Batching communication in the late afternoon preserved mental energy.",
-                                "Apply Thursday's setup to Tuesday and Wednesday for maximum flow."
-                            ),
-                            badgeIcon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF28231E)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CrownIcon(tint = FocusAmber, size = 22.dp)
-                                }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF382348)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = "Lightning",
+                                    tint = Color(0xFFD67EFF),
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
-                        )
-                    }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF28231E)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CrownIcon(tint = FocusAmber, size = 22.dp)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column {
-                            Text(
-                                text = "Best day",
-                                color = FocusTextSecondary,
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Thursday  8h 12m",
-                                color = FocusTextPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = "View",
-                        tint = FocusTextMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Insight Card 2: Longest Session
-            AnimeGlowCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sparkleBurstClick {
-                        selectedInsight = InsightDetail(
-                            title = "Endurance Focus Record",
-                            subtitle = "Longest Continuous Session",
-                            highlightValue = "5h 47m Duration • Apr 17",
-                            description = "Recorded on April 17, 2025. You entered deep flow while tackling critical project tasks without breaking concentration.",
-                            tips = listOf(
-                                "Ensure proper hydration during marathon focus sessions.",
-                                "Use the 20-20-20 rule to rest your eyes periodically.",
-                                "Follow up marathon blocks with light walking or stretching."
-                            ),
-                            badgeIcon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF252646)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Schedule,
-                                        contentDescription = "Clock",
-                                        tint = FocusPurpleLight,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Most productive time",
+                                    color = FocusTextSecondary,
+                                    fontSize = 13.sp
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = peakHourStr,
+                                    color = FocusTextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = "View",
+                            tint = FocusTextMuted,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF252646)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = "Clock",
-                                tint = FocusPurpleLight,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column {
-                            Text(
-                                text = "Longest session",
-                                color = FocusTextSecondary,
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "5h 47m  (Apr 17, 2025)",
-                                color = FocusTextPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = "View",
-                        tint = FocusTextMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Insight Card 3: Most Productive Time
-            AnimeGlowCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sparkleBurstClick {
-                        selectedInsight = InsightDetail(
-                            title = "Circadian Flow Window",
-                            subtitle = "Optimal Productivity Hours",
-                            highlightValue = "9:00 AM – 12:00 PM Peak",
-                            description = "Your internal clock consistently peaks during this 3-hour window. Over 68% of your total daily output is generated before noon.",
-                            tips = listOf(
-                                "Protect this morning window: decline non-essential meetings.",
-                                "Schedule your most challenging problem-solving work here.",
-                                "Keep notifications silenced or phone in another room."
-                            ),
-                            badgeIcon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF382348)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = "Lightning",
-                                        tint = Color(0xFFD67EFF),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        )
-                    }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF382348)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Bolt,
-                                contentDescription = "Lightning",
-                                tint = Color(0xFFD67EFF),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column {
-                            Text(
-                                text = "Most productive time",
-                                color = FocusTextSecondary,
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "9 AM – 12 PM",
-                                color = FocusTextPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = "View",
-                        tint = FocusTextMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
                 }
             }
 

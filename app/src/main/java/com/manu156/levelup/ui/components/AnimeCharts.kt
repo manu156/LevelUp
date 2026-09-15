@@ -178,13 +178,13 @@ fun DonutChartWithCat(
 @Composable
 fun RoundedCapsuleBarChart(
     days: List<Pair<String, Float>> = listOf(
-        "Mon" to 4.2f,
-        "Tue" to 6.0f,
-        "Wed" to 7.2f,
-        "Thu" to 4.8f,
-        "Fri" to 4.4f,
-        "Sat" to 8.2f,
-        "Sun" to 4.8f
+        "Mon" to 0f,
+        "Tue" to 0f,
+        "Wed" to 0f,
+        "Thu" to 0f,
+        "Fri" to 0f,
+        "Sat" to 0f,
+        "Sun" to 0f
     ),
     maxHours: Float = 10f,
     modifier: Modifier = Modifier,

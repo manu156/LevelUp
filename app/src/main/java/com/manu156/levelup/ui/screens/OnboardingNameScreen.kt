@@ -98,7 +98,7 @@ fun OnboardingNameScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Cute Alex avatar preview
+            // Cute Hug avatar preview
             Box(
                 modifier = Modifier
                     .size(100.dp)
@@ -106,7 +106,7 @@ fun OnboardingNameScreen(
                     .border(3.dp, FocusPurpleLight, CircleShape)
             ) {
                 Image(
-                    painter = painterResource(R.drawable.avatar_alex),
+                    painter = painterResource(R.drawable.avatar_hug),
                     contentDescription = "Avatar",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

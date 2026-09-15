@@ -65,12 +65,24 @@ import com.manu156.levelup.ui.theme.GaeguFontFamily
 @Composable
 fun HomeScreen(
     userName: String,
-    avatarUri: String = "preset:alex",
+    avatarUri: String = "preset:hug",
     sessions: List<WorkSession>,
     dayStats: DayStats,
+    dailyGoalHours: Float = 8f,
     onCheckInClick: () -> Unit,
     onAvatarClick: () -> Unit = {}
 ) {
+    val dayProgress = if (dailyGoalHours > 0) {
+        (dayStats.totalMinutes / (dailyGoalHours * 60f)).coerceIn(0f, 1f)
+    } else 0f
+    val gaugeSweep = (dayProgress * 360f).coerceIn(20f, 360f).let {
+        if (dayStats.totalMinutes == 0L) 20f else it
+    }
+    val subtitle = if (sessions.isNotEmpty()) {
+        "${dayStats.sessionCount} session${if (dayStats.sessionCount == 1) "" else "s"} • ${dayStats.avgSessionLengthStr} avg"
+    } else {
+        "No work yet – check in!"
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -148,7 +160,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (sessions.isNotEmpty()) "3h 42m" else "0h 0m",
+                                text = dayStats.totalHoursStr,
                                 color = FocusTextPrimary,
                                 fontSize = 34.sp,
                                 fontWeight = FontWeight.Bold
@@ -163,7 +175,7 @@ fun HomeScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = if (sessions.isNotEmpty()) "2h vs. yesterday" else "0h vs. yesterday",
+                                    text = subtitle,
                                     color = FocusMint,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold
@@ -194,7 +206,7 @@ fun HomeScreen(
                                 drawArc(
                                     brush = Brush.sweepGradient(listOf(FocusCyan, FocusPurpleLight)),
                                     startAngle = -90f,
-                                    sweepAngle = if (sessions.isNotEmpty()) 240f else 20f,
+                                    sweepAngle = gaugeSweep,
                                     useCenter = false,
                                     topLeft = Offset(center.x - radius, center.y - radius),
                                     size = Size(radius * 2, radius * 2),
