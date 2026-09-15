@@ -1,6 +1,7 @@
 package com.manu156.levelup.data.repository
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import com.manu156.levelup.data.git.ConflictResolutionChoice
 import com.manu156.levelup.data.git.GitConflictItem
@@ -13,6 +14,7 @@ import com.manu156.levelup.data.model.SessionCategory
 import com.manu156.levelup.data.model.UserProfile
 import com.manu156.levelup.data.model.WeeklyGoalProgress
 import com.manu156.levelup.data.model.WorkSession
+import com.manu156.levelup.service.SessionForegroundService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -99,7 +101,9 @@ class FocusSessionRepository private constructor(private val context: Context) {
         val savedStartTime = prefs.getLong(KEY_ACTIVE_START, 0L)
         if (savedStartTime > 0L) {
             val title = prefs.getString(KEY_ACTIVE_TITLE, "Focus Session") ?: "Focus Session"
-            resumeSession(savedStartTime, title)
+            val categoryName = prefs.getString(KEY_ACTIVE_CATEGORY, null)
+                ?: SessionCategory.DEEP_WORK.name
+            resumeSession(savedStartTime, title, categoryName)
         }
     }
 
@@ -216,18 +220,42 @@ class FocusSessionRepository private constructor(private val context: Context) {
         prefs.edit()
             .putLong(KEY_ACTIVE_START, now)
             .putString(KEY_ACTIVE_TITLE, _activeTaskTitle.value)
+            .putString(KEY_ACTIVE_CATEGORY, category.name)
             .apply()
 
         startTicker()
+        startForegroundService()
     }
 
-    private fun resumeSession(startTime: Long, title: String) {
+    private fun startForegroundService() {
+        val intent = Intent(context, SessionForegroundService::class.java).apply {
+            action = SessionForegroundService.ACTION_START
+            putExtra(SessionForegroundService.EXTRA_TASK_TITLE, _activeTaskTitle.value)
+            putExtra(SessionForegroundService.EXTRA_START_TIME, _activeStartTime.value)
+        }
+        context.startForegroundService(intent)
+    }
+
+    private fun stopForegroundService() {
+        val intent = Intent(context, SessionForegroundService::class.java).apply {
+            action = SessionForegroundService.ACTION_STOP
+        }
+        context.stopService(intent)
+    }
+
+    private fun resumeSession(startTime: Long, title: String, categoryName: String) {
         _isSessionActive.value = true
         _activeTaskTitle.value = title
+        _activeCategory.value = try {
+            SessionCategory.valueOf(categoryName)
+        } catch (e: Exception) {
+            SessionCategory.DEEP_WORK
+        }
         _activeStartTime.value = startTime
         val now = System.currentTimeMillis()
         _elapsedSeconds.value = ((now - startTime) / 1000).coerceAtLeast(0)
         startTicker()
+        startForegroundService()
     }
 
     private fun startTicker() {
@@ -263,7 +291,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _activeStartTime.value = 0L
         tickerJob?.cancel()
 
-        prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).apply()
+        prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).remove(KEY_ACTIVE_CATEGORY).apply()
 
         val config = gitSyncManager.getSavedConfig()
         if (config.isConfigured) {
@@ -272,6 +300,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
             }
         }
 
+        stopForegroundService()
         return session
     }
 
@@ -279,8 +308,10 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _isSessionActive.value = false
         _elapsedSeconds.value = 0L
         _activeStartTime.value = 0L
+        _activeCategory.value = SessionCategory.DEEP_WORK
         tickerJob?.cancel()
-        prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).apply()
+        prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).remove(KEY_ACTIVE_CATEGORY).apply()
+        stopForegroundService()
     }
 
     fun updateDailyGoal(hours: Float) {
@@ -469,6 +500,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         private const val KEY_DAILY_GOAL = "daily_goal"
         private const val KEY_ACTIVE_START = "active_session_start"
         private const val KEY_ACTIVE_TITLE = "active_session_title"
+        private const val KEY_ACTIVE_CATEGORY = "active_session_category"
 
         @Volatile
         private var INSTANCE: FocusSessionRepository? = null

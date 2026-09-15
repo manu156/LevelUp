@@ -25,6 +25,10 @@ import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,12 +46,16 @@ import androidx.compose.ui.unit.sp
 import com.manu156.levelup.R
 import com.manu156.levelup.data.model.DayStats
 import com.manu156.levelup.data.model.WorkSession
+import com.manu156.levelup.ui.components.AnimeFeedbackStyle
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.AnimePillButton
+import com.manu156.levelup.ui.components.AnimeUserAvatar
 import com.manu156.levelup.ui.components.CatFaceIcon
 import com.manu156.levelup.ui.components.CategoryBadge
 import com.manu156.levelup.ui.components.DarkButtonText
+import com.manu156.levelup.ui.components.nekoTwitchClick
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBorder
 import com.manu156.levelup.ui.theme.FocusCyan
@@ -55,11 +63,6 @@ import com.manu156.levelup.ui.theme.FocusMint
 import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
-
-import com.manu156.levelup.ui.components.AnimeFeedbackStyle
-import com.manu156.levelup.ui.components.AnimeUserAvatar
-import com.manu156.levelup.ui.components.nekoTwitchClick
-import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.GaeguFontFamily
 
 @Composable
@@ -69,6 +72,9 @@ fun HomeScreen(
     sessions: List<WorkSession>,
     dayStats: DayStats,
     dailyGoalHours: Float = 8f,
+    isSessionActive: Boolean = false,
+    activeTaskTitle: String = "Focus Session",
+    elapsedSeconds: Long = 0L,
     onCheckInClick: () -> Unit,
     onAvatarClick: () -> Unit = {}
 ) {
@@ -135,6 +141,41 @@ fun HomeScreen(
                             avatarUri = avatarUri,
                             modifier = Modifier.fillMaxSize()
                         )
+                    }
+                }
+            }
+
+            // Card: Active Session in Progress
+            if (isSessionActive) {
+                item {
+                AnimeGlowCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp)
+                        ) {
+                            Text(
+                                text = "Session in Progress",
+                                color = FocusMint,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = activeTaskTitle.ifBlank { "Deep Focus" },
+                                color = FocusTextPrimary,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = formatElapsed(elapsedSeconds),
+                                color = FocusTextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }
@@ -222,13 +263,13 @@ fun HomeScreen(
                 }
             }
 
-            // Big Pill Action Button: Check In with Katana Slash Cut feedback!
+            // Big Pill Action Button
             item {
                 AnimePillButton(
-                    text = "Check In",
+                    text = if (isSessionActive) "Continue Session" else "Check In",
                     modifier = Modifier.fillMaxWidth(),
                     textColor = DarkButtonText,
-                    feedbackStyle = AnimeFeedbackStyle.KATANA,
+                    feedbackStyle = if (isSessionActive) AnimeFeedbackStyle.SLIME else AnimeFeedbackStyle.KATANA,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -394,4 +435,12 @@ fun SessionTimelineItem(
             color = Color(0xFF2C3558)
         )
     }
+}
+
+private fun formatElapsed(seconds: Long): String {
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val s = seconds % 60
+    val timeStr = String.format("%02d:%02d", m, s)
+    return if (h > 0) "$h:" + String.format("%02d", m) + ":" + String.format("%02d", s) else timeStr
 }

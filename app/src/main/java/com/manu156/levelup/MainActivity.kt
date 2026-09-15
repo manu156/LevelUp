@@ -133,6 +133,9 @@ fun FocusFlowApp() {
             }
         )
     } else {
+        if (isSessionActive && activeModal == AppModalScreen.NONE) {
+            activeModal = AppModalScreen.ACTIVE_SESSION
+        }
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             bottomBar = {
@@ -163,6 +166,9 @@ fun FocusFlowApp() {
                                         sessions = todaySessions,
                                         dayStats = repository.getDayStats(),
                                         dailyGoalHours = dailyGoalHours,
+                                        isSessionActive = isSessionActive,
+                                        activeTaskTitle = activeTaskTitle,
+                                        elapsedSeconds = elapsedSeconds,
                                         onCheckInClick = {
                                             activeModal = if (isSessionActive) {
                                                 AppModalScreen.ACTIVE_SESSION
