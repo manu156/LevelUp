@@ -66,9 +66,15 @@ fun StatsScreen(
     val displayMins = totalMinsToday % 60
     val totalTimeStr = if (displayHours > 0) "${displayHours}h ${displayMins}m" else "${displayMins}m"
 
-    // No historical data tracked yet — all tabs show live week total honestly.
-    val displayTotalTime = totalTimeStr
-    val sessionCount = weeklyGoalProgress.days.sumOf { if (it.hours > 0) 1 else 0 }
+    val isWeekTab = selectedTab == StatsTab.WEEK
+    val displayTotalTime = if (isWeekTab) totalTimeStr else "—"
+    val sessionCount = if (isWeekTab) weeklyGoalProgress.days.sumOf { if (it.hours > 0) 1 else 0 } else 0
+
+    val chartDays: List<Pair<String, Float>> = if (isWeekTab) {
+        weeklyGoalProgress.days.map { it.dayName to it.hours }
+    } else {
+        listOf("W1" to 0f, "W2" to 0f, "W3" to 0f, "W4" to 0f)
+    }
 
     Box(
         modifier = Modifier
@@ -178,10 +184,10 @@ fun StatsScreen(
                             )
                         }
                     }
-                    if (selectedTab != StatsTab.WEEK) {
+                    if (!isWeekTab) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Full history coming soon — showing this week",
+                            text = "${selectedTab.name.lowercase().replaceFirstChar { it.uppercase() }}ly breakdown coming soon — showing this week",
                             color = FocusTextMuted,
                             fontSize = 12.sp
                         )
@@ -191,7 +197,7 @@ fun StatsScreen(
 
                     // Rounded Capsule Bar Chart
                     RoundedCapsuleBarChart(
-                        days = weeklyGoalProgress.days.map { it.dayName to it.hours },
+                        days = chartDays,
                         height = 170.dp
                     )
                 }

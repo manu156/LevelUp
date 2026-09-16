@@ -103,6 +103,8 @@ fun FocusFlowApp() {
     var activeModal by remember { mutableStateOf(AppModalScreen.NONE) }
     var completedSession by remember { mutableStateOf<WorkSession?>(null) }
 
+    var breakdownDate by remember { mutableStateOf(System.currentTimeMillis()) }
+
     val isSessionActive by repository.isSessionActive.collectAsState()
     val activeTaskTitle by repository.activeTaskTitle.collectAsState()
     val elapsedSeconds by repository.elapsedSeconds.collectAsState()
@@ -184,6 +186,7 @@ fun FocusFlowApp() {
                                     StatsScreen(
                                         weeklyGoalProgress = repository.getWeeklyGoalProgress(),
                                         onDailyBreakdownClick = {
+                                            breakdownDate = System.currentTimeMillis()
                                             activeModal = AppModalScreen.DAILY_BREAKDOWN
                                         },
                                         onInsightsClick = {
@@ -252,7 +255,9 @@ fun FocusFlowApp() {
 
                         AppModalScreen.DAILY_BREAKDOWN -> {
                             DailyBreakdownScreen(
-                                stats = repository.getDayStats(),
+                                stats = repository.getDayStatsForDate(breakdownDate),
+                                selectedDate = breakdownDate,
+                                onDateChange = { breakdownDate = it },
                                 onBackClick = { activeModal = AppModalScreen.NONE }
                             )
                         }

@@ -370,6 +370,42 @@ class FocusSessionRepository private constructor(private val context: Context) {
         return streak
     }
 
+    fun getDayStatsForDate(timestamp: Long): DayStats {
+        val sessions = _allSessions.value.filter { isSameDay(it.startTimeMillis, timestamp) }
+        var deepWorkMins = 0L
+        var meetingMins = 0L
+        var breakMins = 0L
+
+        sessions.forEach { s ->
+            when (s.category) {
+                SessionCategory.DEEP_WORK -> deepWorkMins += s.durationMinutes
+                SessionCategory.MEETINGS -> meetingMins += s.durationMinutes
+                SessionCategory.BREAKS -> breakMins += s.durationMinutes
+                SessionCategory.GENERAL_WORK -> deepWorkMins += s.durationMinutes
+            }
+        }
+
+        val totalMins = deepWorkMins + meetingMins + breakMins
+        val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+
+        return DayStats(
+            dateLabel = sdf.format(java.util.Date(timestamp)),
+            totalMinutes = totalMins,
+            deepWorkMinutes = deepWorkMins,
+            meetingsMinutes = meetingMins,
+            breaksMinutes = breakMins,
+            sessionCount = sessions.size,
+            diffVsYesterdayMinutes = 0
+        )
+    }
+
+    private fun isSameDay(timestamp1: Long, timestamp2: Long): Boolean {
+        val cal1 = java.util.Calendar.getInstance().apply { timeInMillis = timestamp1 }
+        val cal2 = java.util.Calendar.getInstance().apply { timeInMillis = timestamp2 }
+        return cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR)
+            && cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
+    }
+
     fun updateDailyGoal(hours: Float) {
         _dailyGoalHours.value = hours
         prefs.edit().putFloat(KEY_DAILY_GOAL, hours).apply()

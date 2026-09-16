@@ -240,7 +240,7 @@ fun RoundedCapsuleBarChart(
             verticalAlignment = Alignment.Bottom
         ) {
             days.forEach { (day, hrs) ->
-                val barFraction = (hrs / maxHours).coerceIn(0.1f, 1f) * animProgress.value
+                val barFraction = (hrs / maxHours).coerceIn(0f, 1f) * animProgress.value
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally

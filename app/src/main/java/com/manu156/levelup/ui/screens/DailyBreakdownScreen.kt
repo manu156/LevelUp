@@ -44,6 +44,8 @@ import com.manu156.levelup.ui.theme.FocusTextSecondary
 @Composable
 fun DailyBreakdownScreen(
     stats: DayStats,
+    selectedDate: Long,
+    onDateChange: (Long) -> Unit,
     onBackClick: () -> Unit
 ) {
     Box(
@@ -95,7 +97,7 @@ fun DailyBreakdownScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Date Switcher (live date from stats)
+            // Date Switcher
             Row(
                 modifier = Modifier.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -105,11 +107,18 @@ fun DailyBreakdownScreen(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Previous Day",
                     tint = FocusTextSecondary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable {
+                            val cal = java.util.Calendar.getInstance()
+                            cal.timeInMillis = selectedDate
+                            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                            onDateChange(cal.timeInMillis)
+                        }
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
-                    text = stats.dateLabel,
+                    text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(selectedDate)),
                     color = FocusTextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
@@ -119,7 +128,14 @@ fun DailyBreakdownScreen(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Next Day",
                     tint = FocusTextSecondary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable {
+                            val cal = java.util.Calendar.getInstance()
+                            cal.timeInMillis = selectedDate
+                            cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
+                            onDateChange(cal.timeInMillis)
+                        }
                 )
             }
 
