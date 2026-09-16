@@ -184,7 +184,9 @@ fun FocusFlowApp() {
 
                                 NavTab.STATS -> {
                                     StatsScreen(
-                                        weeklyGoalProgress = repository.getWeeklyGoalProgress(),
+                                        weekProgress = repository.getWeeklyGoalProgress(),
+                                        monthChartData = repository.getMonthlyChartData(),
+                                        yearChartData = repository.getYearlyChartData(),
                                         onDailyBreakdownClick = {
                                             breakdownDate = System.currentTimeMillis()
                                             activeModal = AppModalScreen.DAILY_BREAKDOWN

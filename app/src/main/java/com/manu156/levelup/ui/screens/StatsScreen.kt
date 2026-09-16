@@ -36,8 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manu156.levelup.data.model.WeeklyGoalProgress
 import com.manu156.levelup.ui.components.AnimeGlowCard
-import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.CatFaceIcon
+import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.RoundedCapsuleBarChart
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
 import com.manu156.levelup.ui.theme.FocusBgDark
@@ -54,26 +54,51 @@ enum class StatsTab {
 
 @Composable
 fun StatsScreen(
-    weeklyGoalProgress: WeeklyGoalProgress,
+    weekProgress: WeeklyGoalProgress,
+    monthChartData: List<Pair<String, Float>>,
+    yearChartData: List<Pair<String, Float>>,
     onDailyBreakdownClick: () -> Unit,
     onInsightsClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(StatsTab.WEEK) }
 
-    val totalHoursToday = weeklyGoalProgress.currentWorkedHoursToday
-    val totalMinsToday = (totalHoursToday * 60).toInt()
-    val displayHours = totalMinsToday / 60
-    val displayMins = totalMinsToday % 60
-    val totalTimeStr = if (displayHours > 0) "${displayHours}h ${displayMins}m" else "${displayMins}m"
+    fun formatMins(mins: Long): String {
+        val hrs = mins / 60
+        val m = mins % 60
+        return if (hrs > 0) "${hrs}h ${m}m" else "${m}m"
+    }
 
-    val isWeekTab = selectedTab == StatsTab.WEEK
-    val displayTotalTime = if (isWeekTab) totalTimeStr else "—"
-    val sessionCount = if (isWeekTab) weeklyGoalProgress.days.sumOf { if (it.hours > 0) 1 else 0 } else 0
+    val weekTotalMins = weekProgress.days.sumOf { (it.hours * 60).toLong() }
+    val weekDisplay = formatMins(weekTotalMins)
+    val monthTotalMins = monthChartData.sumOf { (_, hrs) -> (hrs * 60).toLong() }
+    val monthDisplay = formatMins(monthTotalMins)
+    val yearTotalMins = yearChartData.sumOf { (_, hrs) -> (hrs * 60).toLong() }
+    val yearDisplay = formatMins(yearTotalMins)
 
-    val chartDays: List<Pair<String, Float>> = if (isWeekTab) {
-        weeklyGoalProgress.days.map { it.dayName to it.hours }
-    } else {
-        listOf("W1" to 0f, "W2" to 0f, "W3" to 0f, "W4" to 0f)
+    val displayTotalTime: String
+    val chartDays: List<Pair<String, Float>>
+    val subtitleText: String
+    val hasData: Boolean
+
+    when (selectedTab) {
+        StatsTab.WEEK -> {
+            hasData = weekTotalMins > 0
+            displayTotalTime = weekDisplay
+            chartDays = weekProgress.days.map { it.dayName to it.hours }
+            subtitleText = if (hasData) "${formatMins(weekTotalMins)} this week • ${weekProgress.completionPercent}% of daily goal" else "No work recorded yet"
+        }
+        StatsTab.MONTH -> {
+            hasData = monthTotalMins > 0
+            displayTotalTime = if (hasData) monthDisplay else "0m"
+            chartDays = monthChartData
+            subtitleText = if (hasData) "${monthDisplay} this month" else "No work recorded yet"
+        }
+        StatsTab.YEAR -> {
+            hasData = yearTotalMins > 0
+            displayTotalTime = if (hasData) yearDisplay else "0m"
+            chartDays = yearChartData
+            subtitleText = if (hasData) "${yearDisplay} this year" else "No work recorded yet"
+        }
     }
 
     Box(
@@ -161,7 +186,7 @@ fun StatsScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (totalMinsToday > 0) {
+                        if (hasData) {
                             Icon(
                                 imageVector = Icons.Rounded.ArrowUpward,
                                 contentDescription = "Increase",
@@ -170,27 +195,19 @@ fun StatsScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "$totalTimeStr this week • ${weeklyGoalProgress.completionPercent}% of daily goal",
+                                text = subtitleText,
                                 color = FocusMint,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                         } else {
                             Text(
-                                text = "No work recorded yet",
+                                text = subtitleText,
                                 color = FocusTextMuted,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium
                             )
                         }
-                    }
-                    if (!isWeekTab) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${selectedTab.name.lowercase().replaceFirstChar { it.uppercase() }}ly breakdown coming soon — showing this week",
-                            color = FocusTextMuted,
-                            fontSize = 12.sp
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))

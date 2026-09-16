@@ -442,19 +442,35 @@ class FocusSessionRepository private constructor(private val context: Context) {
     }
 
     fun getWeeklyGoalProgress(): WeeklyGoalProgress {
-        val sessions = _todaySessions.value
-        val totalMinsToday = sessions.sumOf { it.durationMinutes }
-        val hoursToday = totalMinsToday / 60f
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val todayStart = calendar.timeInMillis
+
+        val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+        val daysSinceMonday = (dayOfWeek - java.util.Calendar.MONDAY + 7) % 7
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, -daysSinceMonday)
+        val weekStart = calendar.timeInMillis
+
+        val weekSessions = _allSessions.value.filter { it.startTimeMillis >= weekStart && it.startTimeMillis < weekStart + 7 * 24 * 60 * 60 * 1000L }
+
+        val todaySessions = weekSessions.filter { isSameDay(it.startTimeMillis, todayStart) }
+        val hoursToday = todaySessions.sumOf { it.durationMinutes } / 60f
 
         val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-        val calendar = java.util.Calendar.getInstance()
-        val currentDayOfWeek = (calendar.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+        val calendarForDay = java.util.Calendar.getInstance()
+        val currentDayOfWeek = (calendarForDay.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
 
         val days = dayNames.mapIndexed { index, name ->
+            val dayMillis = weekStart + (index.toLong() * 24 * 60 * 60 * 1000)
+            val daySessions = weekSessions.filter { isSameDay(it.startTimeMillis, dayMillis) }
+            val hours = daySessions.sumOf { it.durationMillis } / (1000 * 60 * 60).toFloat()
             if (index == currentDayOfWeek) {
-                DayProgress(name, hoursToday, isTargetReached = hoursToday >= _dailyGoalHours.value)
+                DayProgress(name, hours, isTargetReached = hours >= _dailyGoalHours.value)
             } else {
-                DayProgress(name, 0f)
+                DayProgress(name, hours)
             }
         }
 
@@ -468,6 +484,66 @@ class FocusSessionRepository private constructor(private val context: Context) {
             completionPercent = completionPercent,
             days = days
         )
+    }
+
+    fun getMonthlyChartData(): List<Pair<String, Float>> {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        val monthStart = cal.timeInMillis
+        val maxDay = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+        val monthEnd = monthStart + maxDay * 24 * 60 * 60 * 1000L
+
+        val monthSessions = _allSessions.value.filter { it.startTimeMillis >= monthStart && it.startTimeMillis < monthEnd }
+
+        // Always show exactly 4 weeks
+        val daysPerWeek = (maxDay + 3) / 4
+        val result = mutableListOf<Pair<String, Float>>()
+        for (w in 0 until 4) {
+            val dayStart = w * daysPerWeek
+            if (dayStart >= maxDay) break
+            val dayEnd = minOf((w + 1) * daysPerWeek, maxDay)
+            val weekStartMillis = monthStart + dayStart * 24 * 60 * 60 * 1000L
+            val weekEndMillis = monthStart + dayEnd * 24 * 60 * 60 * 1000L
+            val weekSessions = monthSessions.filter { it.startTimeMillis >= weekStartMillis && it.startTimeMillis < weekEndMillis }
+            val hours = weekSessions.sumOf { it.durationMillis } / (1000 * 60 * 60).toFloat()
+            result.add("W${w + 1}" to hours)
+        }
+
+        return result
+    }
+
+    fun getYearlyChartData(): List<Pair<String, Float>> {
+        val calendar = java.util.Calendar.getInstance()
+        val year = calendar.get(java.util.Calendar.YEAR)
+
+        val yearSessions = _allSessions.value.filter {
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = it.startTimeMillis }
+            cal.get(java.util.Calendar.YEAR) == year
+        }
+
+        val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        val result = mutableListOf<Pair<String, Float>>()
+
+        for (m in 0..11) {
+            val monthStart = getMonthStart(year, m)
+            val monthEnd = getMonthStart(year, m + 1)
+            val monthSessions = yearSessions.filter { it.startTimeMillis >= monthStart && it.startTimeMillis < monthEnd }
+            val hours = monthSessions.sumOf { it.durationMillis } / (1000 * 60 * 60).toFloat()
+            result.add(monthNames[m] to hours)
+        }
+
+        return result
+    }
+
+    private fun getMonthStart(year: Int, month: Int): Long {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(year, month, 1, 0, 0, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 
     fun getAllSessions(): List<WorkSession> = _allSessions.value
