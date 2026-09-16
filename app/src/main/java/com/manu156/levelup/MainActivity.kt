@@ -265,10 +265,11 @@ fun FocusFlowApp() {
                         }
 
                         AppModalScreen.INSIGHTS -> {
+                            val allSessions by repository.allSessions.collectAsState()
                             InsightsScreen(
-                                sessions = todaySessions,
+                                sessions = allSessions,
                                 dayStats = repository.getDayStats(),
-                                hasData = todaySessions.isNotEmpty(),
+                                hasData = allSessions.isNotEmpty(),
                                 onBackClick = { activeModal = AppModalScreen.NONE }
                             )
                         }
