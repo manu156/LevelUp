@@ -57,6 +57,9 @@ class FocusSessionRepository private constructor(private val context: Context) {
     private val _todaySessions = MutableStateFlow<List<WorkSession>>(emptyList())
     val todaySessions: StateFlow<List<WorkSession>> = _todaySessions.asStateFlow()
 
+    private val _allSessions = MutableStateFlow<List<WorkSession>>(emptyList())
+    val allSessions: StateFlow<List<WorkSession>> = _allSessions.asStateFlow()
+
     private val _userProfile = MutableStateFlow(UserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
@@ -99,6 +102,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         )
 
         val savedStartTime = prefs.getLong(KEY_ACTIVE_START, 0L)
+        updateUserProfileStats()
         if (savedStartTime > 0L) {
             val title = prefs.getString(KEY_ACTIVE_TITLE, "Focus Session") ?: "Focus Session"
             val categoryName = prefs.getString(KEY_ACTIVE_CATEGORY, null)
@@ -112,7 +116,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
             sessionsDir.mkdirs()
             val file = File(sessionsDir, "sessions.json")
             val array = JSONArray()
-            _todaySessions.value.forEach { session ->
+            _allSessions.value.forEach { session ->
                 array.put(sessionToJson(session))
             }
             file.writeText(array.toString(2))
@@ -136,15 +140,29 @@ class FocusSessionRepository private constructor(private val context: Context) {
                     val obj = array.getJSONObject(i)
                     sessions.add(sessionFromJson(obj))
                 }
-                _todaySessions.value = sessions
+                _allSessions.value = sessions.sortedByDescending { it.startTimeMillis }
+                _todaySessions.value = sessions.filter { isSessionToday(it) }.sortedByDescending { it.startTimeMillis }
             }
         } catch (e: Exception) {
             kotlin.runCatching {
                 val file = File(sessionsDir, "sessions.json")
                 if (file.exists()) file.delete()
                 _todaySessions.value = emptyList()
+                _allSessions.value = emptyList()
             }
         }
+    }
+
+    private fun isSessionToday(session: WorkSession): Boolean {
+        val now = java.util.Calendar.getInstance()
+        val today = now.clone() as java.util.Calendar
+        today.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        today.set(java.util.Calendar.MINUTE, 0)
+        today.set(java.util.Calendar.SECOND, 0)
+        today.set(java.util.Calendar.MILLISECOND, 0)
+        val sessionDay = java.util.Calendar.getInstance().apply { timeInMillis = session.startTimeMillis }
+        return sessionDay.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR)
+            && sessionDay.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR)
     }
 
     private fun sessionToJson(session: WorkSession): JSONObject {
@@ -283,8 +301,12 @@ class FocusSessionRepository private constructor(private val context: Context) {
             notes = notes
         )
 
-        _todaySessions.update { listOf(session) + it }
+        if (isSessionToday(session)) {
+            _todaySessions.update { listOf(session) + it }
+        }
+        _allSessions.update { listOf(session) + it }
         saveSessions()
+        updateUserProfileStats()
 
         _isSessionActive.value = false
         _elapsedSeconds.value = 0L
@@ -312,6 +334,40 @@ class FocusSessionRepository private constructor(private val context: Context) {
         tickerJob?.cancel()
         prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).remove(KEY_ACTIVE_CATEGORY).apply()
         stopForegroundService()
+    }
+
+    private fun updateUserProfileStats() {
+        val totalHours = getTotalWorkHours()
+        val streak = getDayStreak()
+        _userProfile.update { it.copy(totalWorkHours = totalHours, dayStreak = streak) }
+        prefs.edit()
+            .putInt(KEY_TOTAL_WORK, totalHours)
+            .putInt(KEY_USER_STREAK, streak)
+            .apply()
+    }
+
+    fun getTotalWorkHours(): Int {
+        val totalMillis = _allSessions.value.sumOf { it.durationMillis }
+        return (totalMillis / 3_600_000).toInt()
+    }
+
+    fun getDayStreak(): Int {
+        val dates = _allSessions.value.map { session ->
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = session.startTimeMillis }
+            "${cal.get(java.util.Calendar.YEAR)}-${cal.get(java.util.Calendar.DAY_OF_YEAR)}"
+        }.toSet()
+        if (dates.isEmpty()) return 0
+        var streak = 0
+        val cal = java.util.Calendar.getInstance()
+        val todayKey = "${cal.get(java.util.Calendar.YEAR)}-${cal.get(java.util.Calendar.DAY_OF_YEAR)}"
+        if (!dates.contains(todayKey)) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        }
+        while (dates.contains("${cal.get(java.util.Calendar.YEAR)}-${cal.get(java.util.Calendar.DAY_OF_YEAR)}")) {
+            streak++
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        }
+        return streak
     }
 
     fun updateDailyGoal(hours: Float) {
@@ -378,16 +434,20 @@ class FocusSessionRepository private constructor(private val context: Context) {
         )
     }
 
-    fun getAllSessions(): List<WorkSession> = _todaySessions.value
+    fun getAllSessions(): List<WorkSession> = _allSessions.value
 
     fun upsertSessions(remoteSessions: List<WorkSession>) {
-        val existingIds = _todaySessions.value.map { it.id }.toSet()
+        val existingIds = _allSessions.value.map { it.id }.toSet()
         val toAdd = remoteSessions.filter { it.id !in existingIds }
         if (toAdd.isNotEmpty()) {
-            _todaySessions.update { existing ->
+            _allSessions.update { existing ->
                 (existing + toAdd).sortedByDescending { it.startTimeMillis }
             }
+            _todaySessions.update { existing ->
+                (existing + toAdd.filter { isSessionToday(it) }).sortedByDescending { it.startTimeMillis }
+            }
             saveSessions()
+            updateUserProfileStats()
         }
     }
 
@@ -399,7 +459,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _gitSyncMessage.value = "Pushing to GitHub..."
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val sessions = _todaySessions.value
+                val sessions = _allSessions.value
                 val result = gitSyncManager.pushToRemote(sessions, config)
                 _gitSyncMessage.value = when (result) {
                     is GitSyncResult.Success -> result.message
