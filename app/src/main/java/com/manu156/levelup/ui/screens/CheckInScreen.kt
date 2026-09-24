@@ -233,6 +233,51 @@ fun CheckInScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Text(
+                    text = "Category",
+                    color = FocusTextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Category selector chips
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SessionCategory.entries.forEach { category ->
+                        val isSelected = selectedCategory == category
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) FocusPurple.copy(alpha = 0.25f)
+                                    else FocusCardBorder.copy(alpha = 0.3f)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) FocusPurple else Color.Transparent,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .slimeBounceClick { selectedCategory = category }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = category.displayName,
+                                color = if (isSelected) FocusPurpleLight else FocusTextMuted,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(26.dp))
 
                 // Large Check In Button with Katana Slash Cut feedback!

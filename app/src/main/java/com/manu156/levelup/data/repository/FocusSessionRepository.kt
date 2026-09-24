@@ -115,17 +115,17 @@ class FocusSessionRepository private constructor(private val context: Context) {
         try {
             sessionsDir.mkdirs()
             val file = File(sessionsDir, "sessions.json")
+            val tempFile = File(sessionsDir, "sessions.json.tmp")
             val array = JSONArray()
             _allSessions.value.forEach { session ->
                 array.put(sessionToJson(session))
             }
-            file.writeText(array.toString(2))
-        } catch (e: Exception) {
-            kotlin.runCatching {
-                val file = File(sessionsDir, "sessions.json")
-                file.parentFile?.mkdirs()
-                file.writeText("[]")
+            tempFile.writeText(array.toString(2))
+            if (tempFile.exists()) {
+                tempFile.renameTo(file)
             }
+        } catch (e: Exception) {
+            android.util.Log.e("FocusSessionRepository", "Error saving sessions", e)
         }
     }
 
@@ -144,12 +144,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
                 _todaySessions.value = sessions.filter { isSessionToday(it) }.sortedByDescending { it.startTimeMillis }
             }
         } catch (e: Exception) {
-            kotlin.runCatching {
-                val file = File(sessionsDir, "sessions.json")
-                if (file.exists()) file.delete()
-                _todaySessions.value = emptyList()
-                _allSessions.value = emptyList()
-            }
+            android.util.Log.e("FocusSessionRepository", "Error loading sessions", e)
         }
     }
 
@@ -212,7 +207,11 @@ class FocusSessionRepository private constructor(private val context: Context) {
 
     fun saveCustomAvatarFromUri(sourceUri: android.net.Uri): String? {
         return try {
-            val targetFile = java.io.File(context.filesDir, "custom_avatar.jpg")
+            // Clean up any old custom avatar files
+            context.filesDir.listFiles { file -> file.name.startsWith("custom_avatar") }?.forEach {
+                it.delete()
+            }
+            val targetFile = java.io.File(context.filesDir, "custom_avatar_${System.currentTimeMillis()}.jpg")
             context.contentResolver.openInputStream(sourceUri)?.use { input ->
                 java.io.FileOutputStream(targetFile).use { output ->
                     input.copyTo(output)
@@ -291,13 +290,14 @@ class FocusSessionRepository private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         val start = _activeStartTime.value
 
+        val category = _activeCategory.value
         val session = WorkSession(
             id = UUID.randomUUID().toString(),
             title = _activeTaskTitle.value,
-            category = _activeCategory.value,
+            category = category,
             startTimeMillis = if (start > 0) start else now - 3 * 3600 * 1000,
             endTimeMillis = now,
-            tag = "Work",
+            tag = category.displayName,
             notes = notes
         )
 
@@ -460,22 +460,21 @@ class FocusSessionRepository private constructor(private val context: Context) {
         val hoursToday = todaySessions.sumOf { it.durationMinutes } / 60f
 
         val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-        val calendarForDay = java.util.Calendar.getInstance()
-        val currentDayOfWeek = (calendarForDay.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
 
         val days = dayNames.mapIndexed { index, name ->
-            val dayMillis = weekStart + (index.toLong() * 24 * 60 * 60 * 1000)
-            val daySessions = weekSessions.filter { isSameDay(it.startTimeMillis, dayMillis) }
-            val hours = daySessions.sumOf { it.durationMillis } / (1000 * 60 * 60).toFloat()
-            if (index == currentDayOfWeek) {
-                DayProgress(name, hours, isTargetReached = hours >= _dailyGoalHours.value)
-            } else {
-                DayProgress(name, hours)
+            val dayCal = java.util.Calendar.getInstance().apply {
+                timeInMillis = weekStart
+                add(java.util.Calendar.DAY_OF_YEAR, index)
             }
+            val daySessions = weekSessions.filter { isSameDay(it.startTimeMillis, dayCal.timeInMillis) }
+            val hours = daySessions.sumOf { it.durationMillis } / 3_600_000f
+            DayProgress(name, hours, isTargetReached = hours >= _dailyGoalHours.value)
         }
 
-        val completionPercent = if (_dailyGoalHours.value > 0) {
-            ((hoursToday / _dailyGoalHours.value) * 100).toInt().coerceAtMost(100)
+        val weekTotalHours = days.sumOf { it.hours.toDouble() }.toFloat()
+        val weeklyTargetHours = _dailyGoalHours.value * 7f
+        val completionPercent = if (weeklyTargetHours > 0) {
+            ((weekTotalHours / weeklyTargetHours) * 100).toInt().coerceAtMost(100)
         } else 0
 
         return WeeklyGoalProgress(
@@ -549,18 +548,15 @@ class FocusSessionRepository private constructor(private val context: Context) {
     fun getAllSessions(): List<WorkSession> = _allSessions.value
 
     fun upsertSessions(remoteSessions: List<WorkSession>) {
+        val remoteMap = remoteSessions.associateBy { it.id }
         val existingIds = _allSessions.value.map { it.id }.toSet()
-        val toAdd = remoteSessions.filter { it.id !in existingIds }
-        if (toAdd.isNotEmpty()) {
-            _allSessions.update { existing ->
-                (existing + toAdd).sortedByDescending { it.startTimeMillis }
-            }
-            _todaySessions.update { existing ->
-                (existing + toAdd.filter { isSessionToday(it) }).sortedByDescending { it.startTimeMillis }
-            }
-            saveSessions()
-            updateUserProfileStats()
-        }
+        val updatedExisting = _allSessions.value.map { remoteMap[it.id] ?: it }
+        val newSessions = remoteSessions.filter { it.id !in existingIds }
+        val all = (updatedExisting + newSessions).sortedByDescending { it.startTimeMillis }
+        _allSessions.value = all
+        _todaySessions.value = all.filter { isSessionToday(it) }
+        saveSessions()
+        updateUserProfileStats()
     }
 
     // Git Repository Synchronization
@@ -573,6 +569,10 @@ class FocusSessionRepository private constructor(private val context: Context) {
             try {
                 val sessions = _allSessions.value
                 val result = gitSyncManager.pushToRemote(sessions, config)
+                _pendingGitConflicts.value = when (result) {
+                    is GitSyncResult.Conflicts -> result.conflictItems
+                    else -> emptyList()
+                }
                 _gitSyncMessage.value = when (result) {
                     is GitSyncResult.Success -> result.message
                     is GitSyncResult.Failure -> result.errorMessage
@@ -599,6 +599,10 @@ class FocusSessionRepository private constructor(private val context: Context) {
                 if (result is GitSyncResult.Success && sessions != null) {
                     upsertSessions(sessions)
                 }
+                _pendingGitConflicts.value = when (result) {
+                    is GitSyncResult.Conflicts -> result.conflictItems
+                    else -> emptyList()
+                }
                 _gitSyncMessage.value = when (result) {
                     is GitSyncResult.Success -> result.message
                     is GitSyncResult.Failure -> result.errorMessage
@@ -621,15 +625,30 @@ class FocusSessionRepository private constructor(private val context: Context) {
         choice: ConflictResolutionChoice,
         config: GitSyncConfig
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        gitSyncManager.resolveConflict(conflict, choice, config)
+        val res = gitSyncManager.resolveConflict(conflict, choice, config)
+        if (res.isSuccess) {
+            _pendingGitConflicts.update { list -> list.filter { it.relativePath != conflict.relativePath } }
+            if (_pendingGitConflicts.value.isEmpty()) {
+                finishGitConflictResolution(config)
+            }
+        }
+        res
     }
 
     suspend fun finishGitConflictResolution(config: GitSyncConfig): GitSyncResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        gitSyncManager.finishConflictResolution(config)
+        val result = gitSyncManager.finishConflictResolution(config)
+        if (result is GitSyncResult.Success) {
+            _pendingGitConflicts.value = emptyList()
+            _gitSyncMessage.value = result.message
+        }
+        result
     }
 
     suspend fun abortGitConflictMerge(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        gitSyncManager.abortConflictedMerge()
+        val res = gitSyncManager.abortConflictedMerge()
+        _pendingGitConflicts.value = emptyList()
+        _gitSyncMessage.value = "Merge aborted"
+        res
     }
 
     suspend fun testGitHubConnection(config: GitSyncConfig): Result<String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -664,6 +683,24 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _gitSyncMessage.value = null
     }
 
+    private val _notificationsEnabled = MutableStateFlow(prefs.getBoolean(KEY_NOTIFICATIONS, true))
+    val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
+
+    private val _hapticsEnabled = MutableStateFlow(prefs.getBoolean(KEY_HAPTICS, true))
+    val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled.asStateFlow()
+
+    fun getNotificationsEnabled(): Boolean = _notificationsEnabled.value
+    fun setNotificationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIFICATIONS, enabled).apply()
+        _notificationsEnabled.value = enabled
+    }
+
+    fun getHapticsEnabled(): Boolean = _hapticsEnabled.value
+    fun setHapticsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
+        _hapticsEnabled.value = enabled
+    }
+
     companion object {
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_AVATAR_URI = "avatar_uri"
@@ -673,6 +710,8 @@ class FocusSessionRepository private constructor(private val context: Context) {
         private const val KEY_ACTIVE_START = "active_session_start"
         private const val KEY_ACTIVE_TITLE = "active_session_title"
         private const val KEY_ACTIVE_CATEGORY = "active_session_category"
+        private const val KEY_NOTIFICATIONS = "notifications_enabled"
+        private const val KEY_HAPTICS = "haptics_enabled"
 
         @Volatile
         private var INSTANCE: FocusSessionRepository? = null

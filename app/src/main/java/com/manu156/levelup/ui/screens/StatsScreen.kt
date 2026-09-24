@@ -212,9 +212,19 @@ fun StatsScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    val calculatedMaxHours = remember(selectedTab, chartDays) {
+                        val maxInChart = chartDays.maxOfOrNull { it.second } ?: 0f
+                        when (selectedTab) {
+                            StatsTab.WEEK -> kotlin.math.max(10f, kotlin.math.ceil(maxInChart / 2f) * 2f)
+                            StatsTab.MONTH -> kotlin.math.max(40f, kotlin.math.ceil(maxInChart / 10f) * 10f)
+                            StatsTab.YEAR -> kotlin.math.max(100f, kotlin.math.ceil(maxInChart / 20f) * 20f)
+                        }
+                    }
+
                     // Rounded Capsule Bar Chart
                     RoundedCapsuleBarChart(
                         days = chartDays,
+                        maxHours = calculatedMaxHours,
                         height = 170.dp
                     )
                 }

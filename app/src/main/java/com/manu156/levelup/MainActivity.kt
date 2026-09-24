@@ -83,6 +83,7 @@ enum class AppModalScreen {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.manu156.levelup.ui.theme.AnimeThemeManager.init(this)
         enableEdgeToEdge()
         setContent {
             LevelUpTheme {
@@ -119,7 +120,15 @@ fun FocusFlowApp() {
     val gitSyncScope = rememberCoroutineScope()
 
     BackHandler(enabled = activeModal != AppModalScreen.NONE) {
-        activeModal = AppModalScreen.NONE
+        if (isSessionActive && activeModal == AppModalScreen.ACTIVE_SESSION) {
+            android.widget.Toast.makeText(
+                context,
+                "Focus session in progress — complete or cancel to exit",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            activeModal = AppModalScreen.NONE
+        }
     }
 
     if (showSplash) {
@@ -135,7 +144,7 @@ fun FocusFlowApp() {
             }
         )
     } else {
-        if (isSessionActive && activeModal == AppModalScreen.NONE) {
+        if (isSessionActive && activeModal != AppModalScreen.ACTIVE_SESSION) {
             activeModal = AppModalScreen.ACTIVE_SESSION
         }
         Scaffold(
@@ -232,7 +241,6 @@ fun FocusFlowApp() {
                                 elapsedSeconds = elapsedSeconds,
                                 dailyGoalHours = dailyGoalHours,
                                 todayTotalMinutes = repository.getDayStats().totalMinutes,
-                                onBackClick = { activeModal = AppModalScreen.NONE },
                                 onCheckOutClick = { notes ->
                                     val session = repository.checkoutSession(notes)
                                     completedSession = session
@@ -275,12 +283,18 @@ fun FocusFlowApp() {
                         }
 
                         AppModalScreen.SETTINGS -> {
+                            val notifEnabled by repository.notificationsEnabled.collectAsState()
+                            val hapticsEnabled by repository.hapticsEnabled.collectAsState()
                             SettingsScreen(
                                 currentName = userProfile.name,
                                 dailyGoalHours = dailyGoalHours,
                                 onBackClick = { activeModal = AppModalScreen.NONE },
                                 onUpdateName = { repository.saveUserName(it) },
                                 onUpdateGoal = { repository.updateDailyGoal(it) },
+                                notificationsEnabled = notifEnabled,
+                                hapticsEnabled = hapticsEnabled,
+                                onToggleNotifications = { repository.setNotificationsEnabled(it) },
+                                onToggleHaptics = { repository.setHapticsEnabled(it) },
                                 gitSyncConfig = gitSyncConfig,
                                 isGitSyncing = isGitSyncing,
                                 gitSyncMessage = gitSyncMessage,

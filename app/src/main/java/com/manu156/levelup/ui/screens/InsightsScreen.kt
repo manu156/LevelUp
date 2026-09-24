@@ -89,8 +89,45 @@ fun InsightsScreen(
         val mins = sessions.sumOf { it.durationMinutes }
         "${mins / 60}h ${mins % 60}m"
     }
-    val peakHourStr = longest?.let { hourFmt.format(java.util.Date(it.startTimeMillis)) } ?: "—"
-    val sessionCount = sessions.size
+
+    // Best day across all sessions
+    val bestDayData = remember(sessions) {
+        val cal = java.util.Calendar.getInstance()
+        val dayGroups = sessions.groupBy { session ->
+            cal.timeInMillis = session.startTimeMillis
+            "${cal.get(java.util.Calendar.YEAR)}-${cal.get(java.util.Calendar.DAY_OF_YEAR)}"
+        }
+        val bestEntry = dayGroups.maxByOrNull { entry -> entry.value.sumOf { it.durationMinutes } }
+        if (bestEntry != null && bestEntry.value.isNotEmpty()) {
+            val sample = bestEntry.value.first()
+            val totalMins = bestEntry.value.sumOf { it.durationMinutes }
+            val formattedDate = dateFmt.format(java.util.Date(sample.startTimeMillis))
+            val timeStr = "${totalMins / 60}h ${totalMins % 60}m"
+            formattedDate to timeStr
+        } else {
+            "Today" to totalStr
+        }
+    }
+
+    // Peak focus window across all sessions
+    val peakHourStr = remember(sessions) {
+        if (sessions.isEmpty()) "—"
+        else {
+            val cal = java.util.Calendar.getInstance()
+            val hourGroups = sessions.groupBy { session ->
+                cal.timeInMillis = session.startTimeMillis
+                cal.get(java.util.Calendar.HOUR_OF_DAY)
+            }
+            val bestHour = hourGroups.maxByOrNull { it.value.sumOf { s -> s.durationMinutes } }?.key
+            if (bestHour != null) {
+                cal.set(java.util.Calendar.HOUR_OF_DAY, bestHour)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                hourFmt.format(cal.time)
+            } else "—"
+        }
+    }
+    val sessionCount = dayStats?.sessionCount ?: sessions.size
+    val totalLifetimeSessions = sessions.size
 
     Box(
         modifier = Modifier
@@ -180,10 +217,10 @@ fun InsightsScreen(
                         .fillMaxWidth()
                         .sparkleBurstClick {
                             selectedInsight = InsightDetail(
-                                title = "Today's Output",
-                                subtitle = "Overall Progress",
-                                highlightValue = "$sessionCount session${if (sessionCount == 1) "" else "s"} • $totalStr today",
-                                description = "This reflects only the sessions recorded on this device so far. No historical comparison yet — keep checking in to build trends.",
+                                title = "Focus Summary",
+                                subtitle = "Work Activity",
+                                highlightValue = "$sessionCount session${if (sessionCount == 1) "" else "s"} today • $totalLifetimeSessions all-time",
+                                description = "You have recorded $sessionCount session${if (sessionCount == 1) "" else "s"} totalling $totalStr today, and $totalLifetimeSessions focus session${if (totalLifetimeSessions == 1) "" else "s"} all-time across the app.",
                                 tips = listOf(
                                     "Keep daily work blocks between 45–90 minutes with 10-minute breaks.",
                                     "Check in every session so totals stay accurate.",
@@ -242,7 +279,7 @@ fun InsightsScreen(
                             Spacer(modifier = Modifier.height(10.dp))
 
                             Text(
-                                text = if (sessionCount > 0) "You've logged $sessionCount session${if (sessionCount == 1) "" else "s"} totalling $totalStr today. Keep it up!" else "No sessions yet today.",
+                                text = if (sessionCount > 0) "You've logged $sessionCount session${if (sessionCount == 1) "" else "s"} totalling $totalStr today. Keep it up!" else "No sessions yet today ($totalLifetimeSessions all-time).",
                                 color = FocusTextSecondary,
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp
@@ -269,20 +306,20 @@ fun InsightsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Insight Card 1: Best Day (live — only today is tracked)
+                // Insight Card 1: Best Day (historical across all sessions)
                 AnimeGlowCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .sparkleBurstClick {
                             selectedInsight = InsightDetail(
-                                title = "Best Day So Far",
-                                subtitle = "Today's Performance",
-                                highlightValue = "Today • $totalStr",
-                                description = "Only today's sessions are tracked on this device so far ($sessionCount session${if (sessionCount == 1) "" else "s"} totalling $totalStr). Weekly history is not recorded yet.",
+                                title = "Best Day Record",
+                                subtitle = "Top Performance",
+                                highlightValue = "${bestDayData.first} • ${bestDayData.second}",
+                                description = "Your most productive day recorded was ${bestDayData.first} with ${bestDayData.second} of focus work.",
                                 tips = listOf(
                                     "Check in consistently so every day counts.",
                                     "Protect one distraction-free block each day.",
-                                    "Review tomorrow to spot your real best day."
+                                    "Schedule demanding tasks during your proven productive hours."
                                 ),
                                 badgeIcon = {
                                     Box(
@@ -324,7 +361,7 @@ fun InsightsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Today  $totalStr",
+                                    text = "${bestDayData.first}  ${bestDayData.second}",
                                     color = FocusTextPrimary,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold

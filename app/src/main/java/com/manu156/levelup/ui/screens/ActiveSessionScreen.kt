@@ -65,7 +65,6 @@ fun ActiveSessionScreen(
     elapsedSeconds: Long,
     dailyGoalHours: Float = 8f,
     todayTotalMinutes: Long = 0L,
-    onBackClick: () -> Unit,
     onCheckOutClick: (notes: String) -> Unit,
     onCancelSession: () -> Unit = {}
 ) {
@@ -102,7 +101,7 @@ fun ActiveSessionScreen(
         ) {
             Spacer(modifier = Modifier.height(36.dp))
 
-            // Top bar: Back arrow + live task title (removed dead options menu)
+            // Top bar: Focus mode badge + live task title (Strict Lock-In Mode)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -110,17 +109,17 @@ fun ActiveSessionScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(FocusCardBg)
-                        .nekoTwitchClick(onClick = onBackClick),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(FocusPurple.copy(alpha = 0.2f))
+                        .border(1.dp, FocusPurple.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = FocusTextPrimary,
-                        modifier = Modifier.size(20.dp)
+                    Text(
+                        text = "🔒 Focus Mode",
+                        color = FocusPurpleLight,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 

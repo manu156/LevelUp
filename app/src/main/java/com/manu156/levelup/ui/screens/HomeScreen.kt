@@ -61,6 +61,7 @@ import com.manu156.levelup.ui.theme.FocusCardBorder
 import com.manu156.levelup.ui.theme.FocusCyan
 import com.manu156.levelup.ui.theme.FocusMint
 import com.manu156.levelup.ui.theme.FocusPurpleLight
+import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
 import com.manu156.levelup.ui.theme.GaeguFontFamily
@@ -89,6 +90,17 @@ fun HomeScreen(
     } else {
         "No work yet – check in!"
     }
+
+    val greeting = remember {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        when (hour) {
+            in 5..11 -> "Good morning,"
+            in 12..16 -> "Good afternoon,"
+            in 17..21 -> "Good evening,"
+            else -> "Good night,"
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -104,7 +116,7 @@ fun HomeScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(28.dp))
-                // Header: Good morning, [User Name] ✨ + Avatar
+                // Header: Dynamic greeting + [User Name] ✨ + Avatar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -112,7 +124,7 @@ fun HomeScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Good morning,",
+                            text = greeting,
                             color = FocusTextSecondary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Medium
@@ -208,16 +220,18 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowUpward,
-                                    contentDescription = "Increase",
-                                    tint = FocusMint,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                if (sessions.isNotEmpty()) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowUpward,
+                                        contentDescription = "Increase",
+                                        tint = FocusMint,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
                                 Text(
                                     text = subtitle,
-                                    color = FocusMint,
+                                    color = if (sessions.isNotEmpty()) FocusMint else FocusTextMuted,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )

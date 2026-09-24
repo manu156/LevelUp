@@ -6,11 +6,11 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.manu156.levelup.R
 
 class SessionForegroundService : Service() {
@@ -24,10 +24,7 @@ class SessionForegroundService : Service() {
         const val CHANNEL_ID = "session_timer_channel"
     }
 
-    private val handler = Handler(Looper.getMainLooper())
     private lateinit var notificationManager: NotificationManager
-    private var timerRunnable: Runnable? = null
-    private var currentTitle: String = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -40,45 +37,33 @@ class SessionForegroundService : Service() {
             ACTION_START -> {
                 val title = intent.getStringExtra(EXTRA_TASK_TITLE) ?: "Focus Session"
                 val startTime = intent.getLongExtra(EXTRA_START_TIME, System.currentTimeMillis())
-                currentTitle = title
-                startForeground(NOTIFICATION_ID, buildNotification(title, startTime))
-                startTimer(startTime)
+                val notification = buildNotification(title, startTime)
+                val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                } else {
+                    0
+                }
+                ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, serviceType)
             }
             ACTION_STOP -> {
-                stopForeground(STOP_FOREGROUND_REMOVE)
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun startTimer(startTime: Long) {
-        timerRunnable = object : Runnable {
-            override fun run() {
-                notificationManager.notify(NOTIFICATION_ID, buildNotification(currentTitle, startTime))
-                handler.postDelayed(this, 1000)
-            }
-        }
-        handler.post(timerRunnable!!)
-    }
-
     private fun buildNotification(title: String, startTime: Long): Notification {
-        val elapsedMs = System.currentTimeMillis() - startTime
-        val totalSeconds = elapsedMs / 1000
-        val h = totalSeconds / 3600
-        val m = (totalSeconds % 3600) / 60
-        val s = totalSeconds % 60
-        val timeStr = buildString {
-            if (h > 0) append("$h h ")
-            append(String.format("%02d:%02d", m, s))
-        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText("Active: $timeStr")
+            .setContentText("Focus session in progress")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setUsesChronometer(true)
+            .setWhen(startTime)
+            .setShowWhen(true)
             .build()
     }
 
@@ -91,11 +76,6 @@ class SessionForegroundService : Service() {
             )
             notificationManager.createNotificationChannel(channel)
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        timerRunnable?.let { handler.removeCallbacks(it) }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

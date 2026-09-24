@@ -4,20 +4,20 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-enum class SessionCategory(val displayName: String) {
-    DEEP_WORK("Deep Work"),
-    MEETINGS("Meetings"),
-    BREAKS("Breaks"),
-    GENERAL_WORK("Work")
+enum class SessionCategory(val displayName: String, val emoji: String) {
+    JOB("Job", "💼"),
+    CODING("Coding", "💻"),
+    PROJECTS("Projects", "🚀"),
+    RESEARCH_STUDY("Research / Study", "📚")
 }
 
 data class WorkSession(
     val id: String,
     val title: String,
-    val category: SessionCategory = SessionCategory.DEEP_WORK,
+    val category: SessionCategory = SessionCategory.JOB,
     val startTimeMillis: Long,
     val endTimeMillis: Long,
-    val tag: String = "Work",
+    val tag: String = "Job",
     val notes: String = ""
 ) {
     val durationMillis: Long get() = (endTimeMillis - startTimeMillis).coerceAtLeast(0)
@@ -44,11 +44,12 @@ data class WorkSession(
 data class DayStats(
     val dateLabel: String,
     val totalMinutes: Long,
-    val deepWorkMinutes: Long,
-    val meetingsMinutes: Long,
-    val breaksMinutes: Long,
+    val jobMinutes: Long = 0L,
+    val codingMinutes: Long = 0L,
+    val projectsMinutes: Long = 0L,
+    val researchMinutes: Long = 0L,
     val sessionCount: Int,
-    val diffVsYesterdayMinutes: Long = 120
+    val diffVsYesterdayMinutes: Long = 0L
 ) {
     val totalHoursStr: String get() {
         val hrs = totalMinutes / 60
@@ -64,9 +65,10 @@ data class DayStats(
         return if (hrs > 0) "${hrs}h ${mins}m" else "${mins}m"
     }
 
-    val deepWorkPercent: Int get() = if (totalMinutes > 0) ((deepWorkMinutes * 100) / totalMinutes).toInt() else 0
-    val meetingsPercent: Int get() = if (totalMinutes > 0) ((meetingsMinutes * 100) / totalMinutes).toInt() else 0
-    val breaksPercent: Int get() = if (totalMinutes > 0) ((breaksMinutes * 100) / totalMinutes).toInt() else 0
+    val jobPercent: Int get() = if (totalMinutes > 0) ((jobMinutes * 100) / totalMinutes).toInt() else 0
+    val codingPercent: Int get() = if (totalMinutes > 0) ((codingMinutes * 100) / totalMinutes).toInt() else 0
+    val projectsPercent: Int get() = if (totalMinutes > 0) ((projectsMinutes * 100) / totalMinutes).toInt() else 0
+    val researchPercent: Int get() = if (totalMinutes > 0) ((researchMinutes * 100) / totalMinutes).toInt() else 0
 
     fun formatMinutes(mins: Long): String {
         val h = mins / 60
@@ -95,8 +97,8 @@ data class WeeklyGoalProgress(
 data class UserProfile(
     val name: String = "Alex",
     val subtitle: String = "Building a better tomorrow ✨",
-    val dayStreak: Int = 12,
-    val totalWorkHours: Int = 48,
+    val dayStreak: Int = 0,
+    val totalWorkHours: Int = 0,
     val dailyGoalHours: Int = 8,
     val avatarUri: String = "preset:hug"
 )

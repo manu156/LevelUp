@@ -195,27 +195,30 @@ fun RoundedCapsuleBarChart(
         animProgress.animateTo(1f, animationSpec = tween(1000, easing = FastOutSlowInEasing))
     }
 
+    val effectiveMax = if (maxHours > 0f) maxHours else 10f
+    val topLabel = "${effectiveMax.toInt()}h"
+    val midLabel = "${(effectiveMax / 2f).toInt()}h"
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
     ) {
-        // Horizontal gridlines: 8h, 4h, 0h
+        // Horizontal gridlines: top, mid, 0h
         Canvas(modifier = Modifier.fillMaxSize()) {
             val chartBottom = size.height - 30.dp.toPx()
             val chartTop = 16.dp.toPx()
             val heightRange = chartBottom - chartTop
 
             val y0 = chartBottom
-            val y4 = chartBottom - (4f / maxHours) * heightRange
-            val y8 = chartBottom - (8f / maxHours) * heightRange
+            val yMid = chartBottom - 0.5f * heightRange
+            val yTop = chartTop
 
             val gridColor = FocusCardBorder.copy(alpha = 0.6f)
-            val stroke = Stroke(width = 1.dp.toPx())
 
             drawLine(gridColor, Offset(35.dp.toPx(), y0), Offset(size.width, y0), strokeWidth = 1.dp.toPx())
-            drawLine(gridColor, Offset(35.dp.toPx(), y4), Offset(size.width, y4), strokeWidth = 1.dp.toPx())
-            drawLine(gridColor, Offset(35.dp.toPx(), y8), Offset(size.width, y8), strokeWidth = 1.dp.toPx())
+            drawLine(gridColor, Offset(35.dp.toPx(), yMid), Offset(size.width, yMid), strokeWidth = 1.dp.toPx())
+            drawLine(gridColor, Offset(35.dp.toPx(), yTop), Offset(size.width, yTop), strokeWidth = 1.dp.toPx())
         }
 
         // Y-axis labels
@@ -225,8 +228,8 @@ fun RoundedCapsuleBarChart(
                 .padding(bottom = 26.dp, top = 6.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("8h", color = FocusTextMuted, fontSize = 11.sp)
-            Text("4h", color = FocusTextMuted, fontSize = 11.sp)
+            Text(topLabel, color = FocusTextMuted, fontSize = 11.sp)
+            Text(midLabel, color = FocusTextMuted, fontSize = 11.sp)
             Text("0h", color = FocusTextMuted, fontSize = 11.sp)
         }
 
@@ -240,7 +243,7 @@ fun RoundedCapsuleBarChart(
             verticalAlignment = Alignment.Bottom
         ) {
             days.forEach { (day, hrs) ->
-                val barFraction = (hrs / maxHours).coerceIn(0f, 1f) * animProgress.value
+                val barFraction = (hrs / effectiveMax).coerceIn(0f, 1f) * animProgress.value
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally

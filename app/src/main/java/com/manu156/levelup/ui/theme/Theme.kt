@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -37,6 +38,8 @@ fun LevelUpTheme(
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
+    val currentPreset = AnimeThemeManager.currentPreset
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
@@ -47,9 +50,17 @@ fun LevelUpTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = FocusColorScheme,
-        typography = Typography,
-        content = content
+    val dynamicColorScheme = FocusColorScheme.copy(
+        primary = currentPreset.primaryColor,
+        secondary = currentPreset.secondaryColor,
+        tertiary = currentPreset.accentMint
     )
+
+    CompositionLocalProvider(LocalAnimeTheme provides currentPreset) {
+        MaterialTheme(
+            colorScheme = dynamicColorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

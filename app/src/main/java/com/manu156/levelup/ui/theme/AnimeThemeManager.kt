@@ -30,6 +30,9 @@ data class AnimeThemePreset(
 )
 
 object AnimeThemeManager {
+    private const val PREFS_NAME = "levelup_theme_prefs"
+    private const val KEY_THEME_ID = "active_theme_id"
+
     val presets = listOf(
         AnimeThemePreset(
             id = "twilight_city",
@@ -57,9 +60,25 @@ object AnimeThemeManager {
     var currentPreset by mutableStateOf(presets[0])
         private set
 
+    private var appContext: android.content.Context? = null
+
+    fun init(context: android.content.Context) {
+        val app = context.applicationContext
+        appContext = app
+        val prefs = app.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        val savedId = prefs.getString(KEY_THEME_ID, presets[0].id)
+        presets.find { it.id == savedId }?.let {
+            currentPreset = it
+        }
+    }
+
     fun switchTheme(presetId: String) {
         presets.find { it.id == presetId }?.let {
             currentPreset = it
+            appContext?.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                ?.edit()
+                ?.putString(KEY_THEME_ID, presetId)
+                ?.apply()
         }
     }
 }

@@ -42,4 +42,28 @@ class FocusDomainTest {
         assertTrue(stats.breaksPercent in 8..9)
         assertEquals("1h 52m", stats.avgSessionLengthStr)
     }
+
+    @Test
+    fun userProfile_defaults_haveZeroStreakAndHours() {
+        val profile = com.manu156.levelup.data.model.UserProfile()
+        assertEquals(0, profile.dayStreak)
+        assertEquals(0, profile.totalWorkHours)
+    }
+
+    @Test
+    fun weeklyGoalProgress_targetReachedEvaluation() {
+        val dayProgressList = listOf(
+            com.manu156.levelup.data.model.DayProgress("Mon", 8.5f, isTargetReached = true),
+            com.manu156.levelup.data.model.DayProgress("Tue", 4.0f, isTargetReached = false)
+        )
+        val weekly = com.manu156.levelup.data.model.WeeklyGoalProgress(
+            targetHoursPerDay = 8f,
+            currentWorkedHoursToday = 4.0f,
+            completionPercent = 22,
+            days = dayProgressList
+        )
+        assertTrue(weekly.days[0].isTargetReached)
+        assertTrue(!weekly.days[1].isTargetReached)
+        assertEquals(22, weekly.completionPercent)
+    }
 }

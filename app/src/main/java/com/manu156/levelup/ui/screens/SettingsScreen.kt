@@ -120,6 +120,10 @@ fun SettingsScreen(
     pendingGitConflicts: List<GitConflictItem>,
     onPushClick: () -> Unit,
     onPullClick: () -> Unit,
+    notificationsEnabled: Boolean = true,
+    hapticsEnabled: Boolean = true,
+    onToggleNotifications: (Boolean) -> Unit = {},
+    onToggleHaptics: (Boolean) -> Unit = {},
     onTestConnectionClick: (GitSyncConfig, (Result<String>) -> Unit) -> Unit,
     onSaveGitSettingsClick: (GitSyncConfig) -> Unit,
     onConflictResolve: (GitConflictItem, ConflictResolutionChoice) -> Unit,
@@ -129,9 +133,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showNameDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
-
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var soundHapticsEnabled by remember { mutableStateOf(true) }
 
     var lastDebugAction by remember { mutableStateOf("None (Tap any button below)") }
     var debugClickCount by remember { mutableStateOf(0) }
@@ -309,7 +310,7 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it },
+                            onCheckedChange = { onToggleNotifications(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = FocusPurple,
                                 checkedTrackColor = FocusPurple.copy(alpha = 0.4f),
@@ -332,8 +333,8 @@ fun SettingsScreen(
                             Text("Tactile anime spring response", color = FocusTextSecondary, fontSize = 12.sp)
                         }
                         Switch(
-                            checked = soundHapticsEnabled,
-                            onCheckedChange = { soundHapticsEnabled = it },
+                            checked = hapticsEnabled,
+                            onCheckedChange = { onToggleHaptics(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = FocusPurple,
                                 checkedTrackColor = FocusPurple.copy(alpha = 0.4f),
@@ -676,7 +677,14 @@ fun SettingsScreen(
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    onTestConnectionClick(gitSyncConfig) { res ->
+                                    val currentFormConfig = GitSyncConfig(
+                                        remoteUrl = repoUrl,
+                                        personalAccessToken = personalAccessToken,
+                                        branch = branchName,
+                                        authorName = authorName,
+                                        authorEmail = authorEmail
+                                    )
+                                    onTestConnectionClick(currentFormConfig) { res ->
                                         testConnectionStatus = res.fold(
                                             onSuccess = { "Connection successful! Repository accessible." },
                                             onFailure = { "Connection failed: ${it.localizedMessage ?: it.message}" }
@@ -1037,9 +1045,14 @@ fun SettingsScreen(
                 conflicts = pendingGitConflicts,
                 onResolve = { conflict, choice ->
                     onConflictResolve(conflict, choice)
+                    if (pendingGitConflicts.size <= 1) {
+                        showConflictDialog = false
+                    }
+                },
+                onAbort = {
+                    onAbortConflicts()
                     showConflictDialog = false
                 },
-                onAbort = { onAbortConflicts() },
                 onDismiss = { showConflictDialog = false }
             )
         }
