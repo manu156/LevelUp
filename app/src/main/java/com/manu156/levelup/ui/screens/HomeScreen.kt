@@ -146,26 +146,6 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(text = "✨", fontSize = 22.sp)
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(currentDayTheme.palette.primary.copy(alpha = 0.15f))
-                                .border(
-                                    1.dp,
-                                    currentDayTheme.palette.primary.copy(alpha = 0.35f),
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .padding(horizontal = 10.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = "${currentDayTheme.vibeEmoji} ${currentDayTheme.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }} • ${currentDayTheme.name}",
-                                color = currentDayTheme.palette.primary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
                     }
 
                     // Avatar with glowing border and neko twitch physics

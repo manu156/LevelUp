@@ -87,4 +87,11 @@ class DayThemeTest {
         val expectedToday = LocalDate.now().dayOfWeek
         assertEquals(expectedToday, DayThemeManager.currentDayTheme.dayOfWeek)
     }
+
+    @Test
+    fun animeThemeManager_presets_mapsToDayThemes() {
+        val presets = com.manu156.levelup.ui.theme.AnimeThemeManager.presets
+        assertEquals(7, presets.size)
+        assertEquals(DayThemeCatalog.weeklyThemes.map { it.id }, presets.map { it.id })
+    }
 }

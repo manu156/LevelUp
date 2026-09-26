@@ -57,10 +57,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.DarkButtonText
+import com.manu156.levelup.ui.components.animeButtonFeedback
 import com.manu156.levelup.ui.components.nekoTwitchClick
 import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.FocusCardBg
 import com.manu156.levelup.ui.theme.FocusCardBorder
+import com.manu156.levelup.ui.theme.LocalDayTheme
 
 data class InsightDetail(
     val title: String,
@@ -129,12 +131,17 @@ fun InsightsScreen(
     val sessionCount = dayStats?.sessionCount ?: sessions.size
     val totalLifetimeSessions = sessions.size
 
+    val dayTheme = LocalDayTheme.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(FocusBgDark)
     ) {
-        SakuraFloatingOverlay(particleCount = 12)
+        SakuraFloatingOverlay(
+            particleCount = 12,
+            tint = dayTheme.palette.secondary
+        )
 
         Column(
             modifier = Modifier
@@ -155,7 +162,7 @@ fun InsightsScreen(
                         .clip(CircleShape)
                         .background(FocusCardBg)
                         .border(1.dp, FocusCardBorder, CircleShape)
-                        .nekoTwitchClick(onClick = onBackClick),
+                        .animeButtonFeedback(style = dayTheme.buttonStyle.feedbackStyle, onClick = onBackClick),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -215,7 +222,7 @@ fun InsightsScreen(
                 AnimeGlowCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .sparkleBurstClick {
+                        .animeButtonFeedback(style = dayTheme.buttonStyle.feedbackStyle) {
                             selectedInsight = InsightDetail(
                                 title = "Focus Summary",
                                 subtitle = "Work Activity",
@@ -310,7 +317,7 @@ fun InsightsScreen(
                 AnimeGlowCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .sparkleBurstClick {
+                        .animeButtonFeedback(style = dayTheme.buttonStyle.feedbackStyle) {
                             selectedInsight = InsightDetail(
                                 title = "Best Day Record",
                                 subtitle = "Top Performance",
@@ -384,7 +391,7 @@ fun InsightsScreen(
                 AnimeGlowCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .sparkleBurstClick {
+                        .animeButtonFeedback(style = dayTheme.buttonStyle.feedbackStyle) {
                             selectedInsight = InsightDetail(
                                 title = "Endurance Focus Record",
                                 subtitle = "Longest Continuous Session",
@@ -468,7 +475,7 @@ fun InsightsScreen(
                 AnimeGlowCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .sparkleBurstClick {
+                        .animeButtonFeedback(style = dayTheme.buttonStyle.feedbackStyle) {
                             selectedInsight = InsightDetail(
                                 title = "Flow Window",
                                 subtitle = "When You Focus Best",
@@ -642,7 +649,6 @@ fun InsightsScreen(
                 confirmButton = {
                     AnimePillButton(
                         text = "Understood ✨",
-                        textColor = DarkButtonText,
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { selectedInsight = null }
                     )

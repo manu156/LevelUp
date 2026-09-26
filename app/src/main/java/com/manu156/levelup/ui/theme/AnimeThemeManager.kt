@@ -33,31 +33,30 @@ object AnimeThemeManager {
     private const val PREFS_NAME = "levelup_theme_prefs"
     private const val KEY_THEME_ID = "active_theme_id"
 
-    val presets = listOf(
-        AnimeThemePreset(
-            id = "twilight_city",
-            title = "Twilight City (Default)",
-            primaryColor = FocusPurple,
-            secondaryColor = FocusCoral,
-            accentMint = FocusMint
-        ),
-        AnimeThemePreset(
-            id = "sakura_bloom",
-            title = "Sakura Bloom",
-            primaryColor = Color(0xFFA67DFD),
-            secondaryColor = Color(0xFFFF6584),
-            accentMint = Color(0xFF38EF7D)
-        ),
-        AnimeThemePreset(
-            id = "cyber_midnight",
-            title = "Cyber Midnight",
-            primaryColor = Color(0xFF7B61FF),
-            secondaryColor = Color(0xFFFF5277),
-            accentMint = Color(0xFF00F0FF)
-        )
-    )
+    val presets: List<AnimeThemePreset>
+        get() = DayThemeCatalog.weeklyThemes.map { dayTheme ->
+            AnimeThemePreset(
+                id = dayTheme.id,
+                title = "${dayTheme.vibeEmoji} ${dayTheme.name} (${dayTheme.dayOfWeek.name.take(3)})",
+                primaryColor = dayTheme.palette.primary,
+                secondaryColor = dayTheme.palette.secondary,
+                accentMint = dayTheme.palette.accent,
+                artwork = dayTheme.artwork
+            )
+        }
 
-    var currentPreset by mutableStateOf(presets[0])
+    var currentPreset by mutableStateOf(
+        DayThemeCatalog.themeFor(java.time.LocalDate.now().dayOfWeek).let { dayTheme ->
+            AnimeThemePreset(
+                id = dayTheme.id,
+                title = "${dayTheme.vibeEmoji} ${dayTheme.name} (${dayTheme.dayOfWeek.name.take(3)})",
+                primaryColor = dayTheme.palette.primary,
+                secondaryColor = dayTheme.palette.secondary,
+                accentMint = dayTheme.palette.accent,
+                artwork = dayTheme.artwork
+            )
+        }
+    )
         private set
 
     private var appContext: android.content.Context? = null
@@ -65,20 +64,13 @@ object AnimeThemeManager {
     fun init(context: android.content.Context) {
         val app = context.applicationContext
         appContext = app
-        val prefs = app.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
-        val savedId = prefs.getString(KEY_THEME_ID, presets[0].id)
-        presets.find { it.id == savedId }?.let {
-            currentPreset = it
-        }
+        syncWithDayTheme(DayThemeManager.currentDayTheme)
     }
 
     fun switchTheme(presetId: String) {
-        presets.find { it.id == presetId }?.let {
-            currentPreset = it
-            appContext?.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
-                ?.edit()
-                ?.putString(KEY_THEME_ID, presetId)
-                ?.apply()
+        val matched = DayThemeCatalog.weeklyThemes.find { it.id == presetId }
+        if (matched != null) {
+            DayThemeManager.selectDay(matched.dayOfWeek)
         }
     }
 

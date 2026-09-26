@@ -56,6 +56,13 @@ import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.FlameStreakIcon
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
 import com.manu156.levelup.ui.theme.AnimeThemeManager
+import com.manu156.levelup.ui.theme.DayThemeCatalog
+import com.manu156.levelup.ui.theme.DayThemeCycleMode
+import com.manu156.levelup.ui.theme.DayThemeManager
+import com.manu156.levelup.ui.theme.LocalDayTheme
+import java.time.LocalDate
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.manu156.levelup.ui.theme.FocusAmber
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
@@ -303,10 +310,18 @@ fun ProfileScreen(
                             .background(FocusCardBorder.copy(alpha = 0.5f))
                     )
 
+                    val dayTheme = LocalDayTheme.current
+                    val isAuto = DayThemeManager.cycleMode == DayThemeCycleMode.AUTO_DAY_OF_WEEK
+                    val themeSubtitle = if (isAuto) {
+                        "Auto: ${dayTheme.vibeEmoji} ${dayTheme.name} (${dayTheme.dayOfWeek.name.take(3)})"
+                    } else {
+                        "${dayTheme.vibeEmoji} ${dayTheme.name} (${dayTheme.dayOfWeek.name.take(3)})"
+                    }
+
                     ProfileMenuItem(
                         icon = Icons.Default.Palette,
                         title = "Anime Theme Preset",
-                        subtitle = AnimeThemeManager.currentPreset.title,
+                        subtitle = themeSubtitle,
                         onClick = { showThemeDialog = true }
                     )
 
@@ -331,54 +346,123 @@ fun ProfileScreen(
 
         // Theme Preset Switcher Dialog
         if (showThemeDialog) {
+            val activeDayTheme = LocalDayTheme.current
+            val isAutoCycle = DayThemeManager.cycleMode == DayThemeCycleMode.AUTO_DAY_OF_WEEK
+
             AlertDialog(
                 onDismissRequest = { showThemeDialog = false },
                 containerColor = FocusCardBg,
                 title = {
                     Text(
-                        text = "Select Anime Theme",
+                        text = "Select Daily Theme",
                         color = FocusTextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    Column {
-                        AnimeThemeManager.presets.forEach { preset ->
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // 1. Auto-Cycle Option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    DayThemeManager.resetToAutoCycle()
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isAutoCycle,
+                                onClick = {
+                                    DayThemeManager.resetToAutoCycle()
+                                    showThemeDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = activeDayTheme.palette.primary,
+                                    unselectedColor = FocusTextMuted
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "🔄 Auto-Cycle with Day of Week",
+                                    color = FocusTextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Currently: ${LocalDate.now().dayOfWeek.name.take(3)} • ${DayThemeCatalog.themeFor(LocalDate.now().dayOfWeek).name} ${DayThemeCatalog.themeFor(LocalDate.now().dayOfWeek).vibeEmoji}",
+                                    color = FocusTextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(FocusCardBorder)
+                        )
+
+                        // 2. The 7 Day Themes
+                        DayThemeCatalog.weeklyThemes.forEach { theme ->
+                            val isSelected = !isAutoCycle && activeDayTheme.dayOfWeek == theme.dayOfWeek
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        AnimeThemeManager.switchTheme(preset.id)
+                                        DayThemeManager.selectDay(theme.dayOfWeek)
                                         showThemeDialog = false
                                     }
-                                    .padding(vertical = 10.dp),
+                                    .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = AnimeThemeManager.currentPreset.id == preset.id,
+                                    selected = isSelected,
                                     onClick = {
-                                        AnimeThemeManager.switchTheme(preset.id)
+                                        DayThemeManager.selectDay(theme.dayOfWeek)
                                         showThemeDialog = false
                                     },
                                     colors = RadioButtonDefaults.colors(
-                                        selectedColor = FocusPurple,
+                                        selectedColor = theme.palette.primary,
                                         unselectedColor = FocusTextMuted
                                     )
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = preset.title,
-                                    color = FocusTextPrimary,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "${theme.vibeEmoji} ${theme.name}",
+                                            color = FocusTextPrimary,
+                                            fontSize = 15.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "(${theme.dayOfWeek.name.take(3)})",
+                                            color = theme.palette.primary,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    Text(
+                                        text = "${theme.buttonStyle.feedbackStyle.name} • ${theme.tagline}",
+                                        color = FocusTextSecondary,
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                         }
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = { showThemeDialog = false }) {
-                        Text("Close", color = FocusMint)
+                        Text("Close", color = activeDayTheme.palette.primary)
                     }
                 }
             )

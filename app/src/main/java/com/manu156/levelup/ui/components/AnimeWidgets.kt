@@ -306,6 +306,8 @@ fun AnimeBottomNavBar(
     onTabSelected: (NavTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val dayTheme = LocalDayTheme.current
+
     // Floating bottom navigation bar with all 4 corners visible!
     Box(
         modifier = modifier
@@ -318,8 +320,8 @@ fun AnimeBottomNavBar(
                 .shadow(
                     elevation = 16.dp,
                     shape = RoundedCornerShape(32.dp),
-                    ambientColor = FocusPurple.copy(alpha = 0.35f),
-                    spotColor = FocusPurple.copy(alpha = 0.45f)
+                    ambientColor = dayTheme.buttonStyle.glowColor.copy(alpha = 0.35f),
+                    spotColor = dayTheme.buttonStyle.glowColor.copy(alpha = 0.45f)
                 )
                 .border(
                     border = BorderStroke(1.2.dp, FocusNavBorder),
@@ -341,7 +343,7 @@ fun AnimeBottomNavBar(
                     onClick = { onTabSelected(NavTab.HOME) },
                     icon = { isSelected ->
                         AnimeHouseIcon(
-                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            tint = if (isSelected) dayTheme.palette.primary else FocusTextMuted,
                             size = 24.dp
                         )
                     }
@@ -355,7 +357,7 @@ fun AnimeBottomNavBar(
                         Icon(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = "Stats",
-                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            tint = if (isSelected) dayTheme.palette.primary else FocusTextMuted,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -367,7 +369,7 @@ fun AnimeBottomNavBar(
                     onClick = { onTabSelected(NavTab.GOALS) },
                     icon = { isSelected ->
                         BullseyeTargetIcon(
-                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            tint = if (isSelected) dayTheme.palette.primary else FocusTextMuted,
                             size = 24.dp
                         )
                     }
@@ -379,7 +381,7 @@ fun AnimeBottomNavBar(
                     onClick = { onTabSelected(NavTab.PROFILE) },
                     icon = { isSelected ->
                         CatFaceIcon(
-                            tint = if (isSelected) FocusPurple else FocusTextMuted,
+                            tint = if (isSelected) dayTheme.palette.primary else FocusTextMuted,
                             size = 24.dp
                         )
                     }
@@ -396,16 +398,17 @@ private fun NavItem(
     onClick: () -> Unit,
     icon: @Composable (Boolean) -> Unit
 ) {
+    val dayTheme = LocalDayTheme.current
     val scale = if (isSelected) 1.08f else 1.0f
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) FocusPurple else FocusTextMuted,
+        targetValue = if (isSelected) dayTheme.palette.primary else FocusTextMuted,
         label = "nav_text_color"
     )
 
     Box(
         modifier = Modifier
             .scale(scale)
-            .nekoTwitchClick(onClick = onClick)
+            .animeButtonFeedback(style = dayTheme.buttonStyle.feedbackStyle, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
