@@ -58,6 +58,7 @@ import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import com.manu156.levelup.ui.theme.LocalDayTheme
 
 @Composable
 fun ActiveSessionScreen(
@@ -289,15 +290,14 @@ fun ActiveSessionScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Coral Check Out Pill Button with Slime Squash feedback!
+            // Check Out Pill Button with DayTheme styling and feedback!
             AnimePillButton(
                 text = "Check Out",
                 modifier = Modifier.fillMaxWidth(),
-                feedbackStyle = AnimeFeedbackStyle.SLIME,
                 icon = {
-                    CatFaceIcon(tint = DarkButtonText, size = 20.dp)
+                    CatFaceIcon(tint = LocalDayTheme.current.buttonStyle.textColor, size = 20.dp)
                 },
-                gradientColors = listOf(FocusCoral, FocusCoralDark),
+                gradientColors = LocalDayTheme.current.buttonStyle.secondaryGradient,
                 onClick = { onCheckOutClick(notes) }
             )
 

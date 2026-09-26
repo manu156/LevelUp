@@ -144,9 +144,10 @@ fun DailyBreakdownScreen(
             // Donut Chart with Center Cat Face
             DonutChartWithCat(
                 totalTimeStr = stats.totalHoursStr,
-                deepWorkPercent = stats.deepWorkPercent / 100f,
-                meetingsPercent = stats.meetingsPercent / 100f,
-                breaksPercent = stats.breaksPercent / 100f,
+                jobPercent = stats.jobPercent / 100f,
+                codingPercent = stats.codingPercent / 100f,
+                projectsPercent = stats.projectsPercent / 100f,
+                researchPercent = stats.researchPercent / 100f,
                 size = 230.dp
             )
 
@@ -154,27 +155,36 @@ fun DailyBreakdownScreen(
 
             // Category rows
             CategoryBreakdownRow(
-                title = "Deep Work",
-                durationStr = stats.formatMinutes(stats.deepWorkMinutes),
-                percentStr = "${stats.deepWorkPercent}%",
+                title = "Job",
+                durationStr = stats.formatMinutes(stats.jobMinutes),
+                percentStr = "${stats.jobPercent}%",
+                color = com.manu156.levelup.ui.theme.FocusCyan
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            CategoryBreakdownRow(
+                title = "Coding",
+                durationStr = stats.formatMinutes(stats.codingMinutes),
+                percentStr = "${stats.codingPercent}%",
                 color = FocusPurple
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
             CategoryBreakdownRow(
-                title = "Meetings",
-                durationStr = stats.formatMinutes(stats.meetingsMinutes),
-                percentStr = "${stats.meetingsPercent}%",
+                title = "Projects",
+                durationStr = stats.formatMinutes(stats.projectsMinutes),
+                percentStr = "${stats.projectsPercent}%",
                 color = FocusCoral
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
             CategoryBreakdownRow(
-                title = "Breaks",
-                durationStr = stats.formatMinutes(stats.breaksMinutes),
-                percentStr = "${stats.breaksPercent}%",
+                title = "Research / Study",
+                durationStr = stats.formatMinutes(stats.researchMinutes),
+                percentStr = "${stats.researchPercent}%",
                 color = FocusAmber
             )
 

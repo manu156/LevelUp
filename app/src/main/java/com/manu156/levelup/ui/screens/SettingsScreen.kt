@@ -103,6 +103,12 @@ import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import com.manu156.levelup.ui.theme.DayThemeCatalog
+import com.manu156.levelup.ui.theme.DayThemeCycleMode
+import com.manu156.levelup.ui.theme.DayThemeManager
+import com.manu156.levelup.ui.theme.LocalDayTheme
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -147,6 +153,8 @@ fun SettingsScreen(
     var isConfigExpanded by remember(gitSyncConfig.isConfigured) { mutableStateOf(!gitSyncConfig.isConfigured) }
     var showConflictDialog by remember { mutableStateOf(false) }
     var testConnectionStatus by remember { mutableStateOf<String?>(null) }
+    var themeTestCount by remember { mutableStateOf(0) }
+    var lastThemeTestAction by remember { mutableStateOf("Tap the button below to test today's feedback!") }
 
     Box(
         modifier = Modifier
@@ -256,33 +264,259 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Section 2: Visual Theme
-            Text(
-                text = "Theme & Customization",
-                color = FocusPurpleLight,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
+            // Section 2: Day-Based Cycling Theme Division
+            val activeDayTheme = LocalDayTheme.current
+            val isAutoCycle = DayThemeManager.cycleMode == DayThemeCycleMode.AUTO_DAY_OF_WEEK
+            val calendarToday = LocalDate.now().dayOfWeek
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Daily Cycling Theme & Styles",
+                    color = activeDayTheme.palette.primary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(activeDayTheme.palette.primary.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (isAutoCycle) "Auto-Cycling" else "Manual Preview",
+                        color = activeDayTheme.palette.primary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
-            AnimeGlowCard(modifier = Modifier.fillMaxWidth()) {
-                Row(
+            AnimeGlowCard(
+                modifier = Modifier.fillMaxWidth(),
+                borderColor = activeDayTheme.palette.primary.copy(alpha = 0.4f)
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showThemeDialog = true }
                         .padding(18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Palette, contentDescription = "Theme", tint = FocusPurpleLight, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Anime Theme Preset", color = FocusTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                            Text(AnimeThemeManager.currentPreset.title, color = FocusTextSecondary, fontSize = 12.sp)
+                    // Current Active Theme Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = activeDayTheme.vibeEmoji,
+                                fontSize = 28.sp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = activeDayTheme.name,
+                                        color = FocusTextPrimary,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "(${activeDayTheme.dayOfWeek.name.take(3)})",
+                                        color = activeDayTheme.palette.primary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Text(
+                                    text = activeDayTheme.tagline,
+                                    color = FocusTextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
                         }
                     }
-                    Text("Switch", color = FocusPurpleLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+
+                    // Auto-Cycle Switch Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Auto-Cycle by Day of Week",
+                                color = FocusTextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Updates colors, buttons & physics each midnight",
+                                color = FocusTextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Switch(
+                            checked = isAutoCycle,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    DayThemeManager.resetToAutoCycle()
+                                } else {
+                                    DayThemeManager.selectDay(activeDayTheme.dayOfWeek)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = activeDayTheme.palette.primary,
+                                uncheckedThumbColor = FocusTextMuted,
+                                uncheckedTrackColor = FocusCardBorder
+                            )
+                        )
+                    }
+
+                    // 7-Day Cycle Selector Strip
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Select Theme Day to Preview",
+                                color = FocusTextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (!isAutoCycle) {
+                                Text(
+                                    text = "↺ Reset to Today",
+                                    color = activeDayTheme.palette.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable {
+                                        DayThemeManager.resetToAutoCycle()
+                                    }
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            DayThemeCatalog.weeklyThemes.forEach { theme ->
+                                val isSelected = activeDayTheme.dayOfWeek == theme.dayOfWeek
+                                val isToday = calendarToday == theme.dayOfWeek
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 2.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isSelected) {
+                                                theme.palette.primary.copy(alpha = 0.25f)
+                                            } else {
+                                                Color(0xFF161A30)
+                                            }
+                                        )
+                                        .border(
+                                            width = if (isSelected) 1.5.dp else 0.8.dp,
+                                            color = if (isSelected) theme.palette.primary else if (isToday) FocusMint.copy(alpha = 0.6f) else FocusCardBorder,
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable {
+                                            DayThemeManager.selectDay(theme.dayOfWeek)
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(text = theme.vibeEmoji, fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = theme.dayOfWeek.name.take(3),
+                                            color = if (isSelected) theme.palette.primary else FocusTextSecondary,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Interactive Day Theme Button Test Bed
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Today's Button: ${activeDayTheme.buttonStyle.feedbackStyle.name}",
+                                color = FocusTextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (themeTestCount > 0) {
+                                Text(
+                                    text = "Tapped #$themeTestCount",
+                                    color = activeDayTheme.palette.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        AnimePillButton(
+                            text = "${activeDayTheme.vibeEmoji} Test ${activeDayTheme.name} Action",
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                themeTestCount++
+                                lastThemeTestAction = "Triggered ${activeDayTheme.buttonStyle.feedbackStyle.name} on ${activeDayTheme.name}!"
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = lastThemeTestAction,
+                            color = FocusTextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    // Classic Presets Switcher Option
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showThemeDialog = true }
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Legacy Presets Dialog",
+                            color = FocusTextMuted,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "Open",
+                            color = activeDayTheme.palette.primary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
 

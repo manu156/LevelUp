@@ -81,6 +81,17 @@ object AnimeThemeManager {
                 ?.apply()
         }
     }
+
+    fun syncWithDayTheme(dayTheme: DayTheme) {
+        currentPreset = AnimeThemePreset(
+            id = dayTheme.id,
+            title = "${dayTheme.name} (${dayTheme.vibeEmoji} ${dayTheme.dayOfWeek.name.take(3)})",
+            primaryColor = dayTheme.palette.primary,
+            secondaryColor = dayTheme.palette.secondary,
+            accentMint = dayTheme.palette.accent,
+            artwork = dayTheme.artwork
+        )
+    }
 }
 
 val LocalAnimeTheme = compositionLocalOf { AnimeThemeManager.currentPreset }

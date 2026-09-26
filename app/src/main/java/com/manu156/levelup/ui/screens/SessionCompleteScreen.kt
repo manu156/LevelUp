@@ -46,6 +46,7 @@ import com.manu156.levelup.ui.theme.FocusPurple
 import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import com.manu156.levelup.ui.theme.LocalDayTheme
 
 @Composable
 fun SessionCompleteScreen(
@@ -191,16 +192,15 @@ fun SessionCompleteScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Back to Home Button with Sparkle Burst feedback!
+            // Back to Home Button with DayTheme celebration feedback!
             AnimePillButton(
                 text = "Back to Home",
                 modifier = Modifier.fillMaxWidth(),
-                feedbackStyle = AnimeFeedbackStyle.SPARKLE_BURST,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Home,
                         contentDescription = "Home",
-                        tint = DarkButtonText,
+                        tint = LocalDayTheme.current.buttonStyle.textColor,
                         modifier = Modifier.size(20.dp)
                     )
                 },

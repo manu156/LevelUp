@@ -62,6 +62,7 @@ import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import com.manu156.levelup.ui.theme.LocalDayTheme
 
 val DarkButtonText = Color(0xFF0C0F1E)
 
@@ -132,27 +133,34 @@ fun AnimePillButton(
     text: String,
     modifier: Modifier = Modifier,
     icon: (@Composable () -> Unit)? = null,
-    gradientColors: List<Color> = listOf(FocusPurple, FocusPurpleLight),
-    textColor: Color = DarkButtonText,
+    gradientColors: List<Color>? = null,
+    textColor: Color? = null,
     height: Dp = 56.dp,
     enabled: Boolean = true,
-    feedbackStyle: AnimeFeedbackStyle = AnimeFeedbackStyle.SLIME,
+    feedbackStyle: AnimeFeedbackStyle? = null,
+    glowColor: Color? = null,
     onClick: () -> Unit
 ) {
+    val dayTheme = LocalDayTheme.current
+    val effectiveColors = gradientColors ?: dayTheme.buttonStyle.primaryGradient
+    val effectiveTextColor = textColor ?: dayTheme.buttonStyle.textColor
+    val effectiveFeedback = feedbackStyle ?: dayTheme.buttonStyle.feedbackStyle
+    val effectiveGlow = glowColor ?: dayTheme.buttonStyle.glowColor
+
     Box(
         modifier = modifier
             .height(height)
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(height / 2),
-                ambientColor = gradientColors.first().copy(alpha = 0.4f),
-                spotColor = gradientColors.first().copy(alpha = 0.6f)
+                ambientColor = effectiveGlow.copy(alpha = 0.35f),
+                spotColor = effectiveGlow.copy(alpha = 0.5f)
             )
             .background(
-                brush = Brush.horizontalGradient(gradientColors),
+                brush = Brush.horizontalGradient(effectiveColors),
                 shape = RoundedCornerShape(height / 2)
             )
-            .animeButtonFeedback(style = feedbackStyle, enabled = enabled, onClick = onClick),
+            .animeButtonFeedback(style = effectiveFeedback, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -166,9 +174,54 @@ fun AnimePillButton(
             }
             Text(
                 text = text,
-                color = textColor,
+                color = effectiveTextColor,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun DayThemedSecondaryButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    icon: (@Composable () -> Unit)? = null,
+    height: Dp = 50.dp,
+    enabled: Boolean = true,
+    feedbackStyle: AnimeFeedbackStyle? = null,
+    onClick: () -> Unit
+) {
+    val dayTheme = LocalDayTheme.current
+    val effectiveFeedback = feedbackStyle ?: dayTheme.buttonStyle.feedbackStyle
+
+    Box(
+        modifier = modifier
+            .height(height)
+            .clip(RoundedCornerShape(height / 2))
+            .background(dayTheme.palette.surface.copy(alpha = 0.85f))
+            .border(
+                width = 1.2.dp,
+                brush = Brush.horizontalGradient(dayTheme.buttonStyle.secondaryGradient),
+                shape = RoundedCornerShape(height / 2)
+            )
+            .animeButtonFeedback(style = effectiveFeedback, enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 20.dp)
+        ) {
+            if (icon != null) {
+                icon()
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                color = dayTheme.palette.textPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }

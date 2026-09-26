@@ -47,9 +47,11 @@ import androidx.compose.ui.unit.sp
 import com.manu156.levelup.R
 import com.manu156.levelup.ui.components.AnimeGlowCard
 import com.manu156.levelup.ui.components.AnimePillButton
+import com.manu156.levelup.ui.components.DayThemedSecondaryButton
 import com.manu156.levelup.ui.components.BullseyeTargetIcon
 import com.manu156.levelup.ui.components.RoundedCapsuleBarChart
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
+import com.manu156.levelup.ui.theme.LocalDayTheme
 import com.manu156.levelup.ui.components.slimeBounceClick
 import com.manu156.levelup.ui.components.sparkleBurstClick
 import com.manu156.levelup.ui.theme.FocusAmber
@@ -238,33 +240,21 @@ fun GoalsScreen(
 
                     Spacer(modifier = Modifier.height(22.dp))
 
-                    // Edit Goal Button with Slime Squash & Stretch feedback
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp)
-                            .clip(RoundedCornerShape(23.dp))
-                            .background(Color(0xFF22284E))
-                            .border(1.dp, FocusCardBorder, RoundedCornerShape(23.dp))
-                            .slimeBounceClick { showEditDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Edit Goal Button with DayTheme styling
+                    DayThemedSecondaryButton(
+                        text = "Edit Goal",
+                        modifier = Modifier.fillMaxWidth(),
+                        height = 46.dp,
+                        icon = {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Edit",
-                                tint = FocusPurpleLight,
+                                tint = LocalDayTheme.current.palette.primary,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Edit Goal",
-                                color = FocusTextPrimary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
+                        },
+                        onClick = { showEditDialog = true }
+                    )
                 }
             }
 

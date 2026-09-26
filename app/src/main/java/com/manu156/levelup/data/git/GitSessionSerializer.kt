@@ -40,13 +40,20 @@ object GitSessionSerializer {
 
         val info = root.optJSONObject("info") ?: JSONObject()
         val title = info.optString("title", "Focus Session")
-        val categoryName = info.optString("category", "DEEP_WORK")
-        val category = try {
-            SessionCategory.valueOf(categoryName)
-        } catch (e: Exception) {
-            SessionCategory.DEEP_WORK
+        val categoryName = info.optString("category", "PROJECTS")
+        val category = when (categoryName.uppercase()) {
+            "JOB" -> SessionCategory.JOB
+            "CODING" -> SessionCategory.CODING
+            "PROJECTS" -> SessionCategory.PROJECTS
+            "RESEARCH_STUDY", "RESEARCH" -> SessionCategory.RESEARCH_STUDY
+            "DEEP_WORK", "MEETINGS", "BREAKS", "GENERAL_WORK", "WORK" -> SessionCategory.PROJECTS
+            else -> try {
+                SessionCategory.valueOf(categoryName)
+            } catch (e: Exception) {
+                SessionCategory.PROJECTS
+            }
         }
-        val tag = info.optString("tag", "Work")
+        val tag = info.optString("tag", "Projects")
         val notes = info.optString("notes", "")
 
         val timing = root.optJSONObject("timing") ?: JSONObject()

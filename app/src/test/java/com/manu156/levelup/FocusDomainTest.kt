@@ -16,7 +16,7 @@ class FocusDomainTest {
         val session = WorkSession(
             id = "test_1",
             title = "Architecture",
-            category = SessionCategory.DEEP_WORK,
+            category = SessionCategory.CODING,
             startTimeMillis = start,
             endTimeMillis = end
         )
@@ -30,17 +30,68 @@ class FocusDomainTest {
         val stats = DayStats(
             dateLabel = "Apr 21, 2025",
             totalMinutes = 448L, // 7h 28m
-            deepWorkMinutes = 312L, // 5h 12m ~ 70%
-            meetingsMinutes = 96L,  // 1h 36m ~ 21-22%
-            breaksMinutes = 40L,    // 40m ~ 8-9%
+            jobMinutes = 200L,     // ~44-45%
+            codingMinutes = 112L,  // 25%
+            projectsMinutes = 96L, // ~21%
+            researchMinutes = 40L, // ~8-9%
             sessionCount = 4
         )
 
         assertEquals("7h 28m", stats.totalHoursStr)
-        assertTrue(stats.deepWorkPercent in 69..70)
-        assertTrue(stats.meetingsPercent in 21..22)
-        assertTrue(stats.breaksPercent in 8..9)
+        assertTrue(stats.jobPercent in 44..45)
+        assertEquals(25, stats.codingPercent)
+        assertTrue(stats.projectsPercent in 21..22)
+        assertTrue(stats.researchPercent in 8..9)
         assertEquals("1h 52m", stats.avgSessionLengthStr)
+    }
+
+    @Test
+    fun gitSessionSerializer_legacyCategoryMigration_mapsToProjects() {
+        val legacyJson = """
+            {
+              "version": 1,
+              "id": "legacy-session-123",
+              "info": {
+                "title": "Deep Code",
+                "category": "DEEP_WORK",
+                "tag": "Focus",
+                "notes": "Testing legacy mapping"
+              },
+              "timing": {
+                "startEpochMs": 1700000000000,
+                "endEpochMs": 1700003600000
+              }
+            }
+        """.trimIndent()
+
+        val deserialized = com.manu156.levelup.data.git.GitSessionSerializer.deserializeSession(legacyJson)
+        assertEquals(SessionCategory.PROJECTS, deserialized.category)
+        assertEquals("legacy-session-123", deserialized.id)
+        assertEquals("Deep Code", deserialized.title)
+    }
+
+    @Test
+    fun gitSessionSerializer_newCategories_deserializeCorrectly() {
+        val json = """
+            {
+              "version": 1,
+              "id": "session-456",
+              "info": {
+                "title": "LLM Load Balancer",
+                "category": "RESEARCH_STUDY",
+                "tag": "Diffusion Models",
+                "notes": "Paper reading"
+              },
+              "timing": {
+                "startEpochMs": 1700000000000,
+                "endEpochMs": 1700003600000
+              }
+            }
+        """.trimIndent()
+
+        val deserialized = com.manu156.levelup.data.git.GitSessionSerializer.deserializeSession(json)
+        assertEquals(SessionCategory.RESEARCH_STUDY, deserialized.category)
+        assertEquals("Diffusion Models", deserialized.tag)
     }
 
     @Test

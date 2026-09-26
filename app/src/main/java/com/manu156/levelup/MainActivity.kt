@@ -84,6 +84,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         com.manu156.levelup.ui.theme.AnimeThemeManager.init(this)
+        com.manu156.levelup.ui.theme.DayThemeManager.init(this)
         enableEdgeToEdge()
         setContent {
             LevelUpTheme {
@@ -228,8 +229,11 @@ fun FocusFlowApp() {
                         AppModalScreen.CHECK_IN -> {
                             CheckInScreen(
                                 onBackClick = { activeModal = AppModalScreen.NONE },
-                                onStartSession = { title, category ->
-                                    repository.startSession(title, category)
+                                suggestedSubtagsProvider = { category ->
+                                    repository.getSuggestedSubtags(category)
+                                },
+                                onStartSession = { title, category, tag ->
+                                    repository.startSession(title, category, tag)
                                     activeModal = AppModalScreen.ACTIVE_SESSION
                                 }
                             )

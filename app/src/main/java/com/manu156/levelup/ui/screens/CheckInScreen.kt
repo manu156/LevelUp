@@ -48,30 +48,33 @@ import com.manu156.levelup.ui.components.DarkButtonText
 import com.manu156.levelup.ui.components.AnimePillButton
 import com.manu156.levelup.ui.components.SakuraFloatingOverlay
 import com.manu156.levelup.ui.components.slimeBounceClick
+import com.manu156.levelup.ui.theme.FocusAmber
 import com.manu156.levelup.ui.theme.FocusBgDark
 import com.manu156.levelup.ui.theme.FocusCardBg
 import com.manu156.levelup.ui.theme.FocusCardBorder
+import com.manu156.levelup.ui.theme.FocusCoral
+import com.manu156.levelup.ui.theme.FocusCyan
 import com.manu156.levelup.ui.theme.FocusPurple
 import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import com.manu156.levelup.ui.theme.LocalDayTheme
 
 @Composable
 fun CheckInScreen(
     onBackClick: () -> Unit,
-    onStartSession: (title: String, category: SessionCategory) -> Unit
+    suggestedSubtagsProvider: (SessionCategory) -> List<String> = { emptyList() },
+    onStartSession: (title: String, category: SessionCategory, tag: String) -> Unit
 ) {
-    var taskTitle by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(SessionCategory.DEEP_WORK) }
+    var selectedCategory by remember { mutableStateOf(SessionCategory.JOB) }
+    var selectedSubtag by remember { mutableStateOf("") }
+    var customSubtagInput by remember { mutableStateOf("") }
 
-    val presetChips = listOf(
-        "Project Apollo",
-        "Client calls",
-        "Deep Work",
-        "Code Review",
-        "Study Session"
-    )
+    // Query learned and seed suggestions for current category
+    val dynamicSubtags = remember(selectedCategory) {
+        suggestedSubtagsProvider(selectedCategory)
+    }
 
     Box(
         modifier = Modifier
@@ -82,7 +85,7 @@ fun CheckInScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(340.dp)
+                .height(300.dp)
         ) {
             Image(
                 painter = painterResource(R.drawable.splash_twilight_girl),
@@ -138,14 +141,14 @@ fun CheckInScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Time to focus!",
+                    text = "Time to level up!",
                     color = FocusTextPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Start your work session",
+                    text = "Choose your focus quest",
                     color = FocusTextSecondary,
                     fontSize = 14.sp
                 )
@@ -166,136 +169,199 @@ fun CheckInScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp)
+                    .padding(20.dp)
             ) {
+                // Section 1: Main Tag / Category Chips
                 Text(
-                    text = "What are you working on?",
+                    text = "Select Focus Category",
                     color = FocusTextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Text Input
-                OutlinedTextField(
-                    value = taskTitle,
-                    onValueChange = { taskTitle = it },
-                    placeholder = {
-                        Text(
-                            text = "e.g. Project Apollo, Client calls, etc.",
-                            color = FocusTextMuted,
-                            fontSize = 14.sp
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Pencil",
-                            tint = FocusPurpleLight,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
+                // 4 Main Anime Category Chips in a 2x2 grid
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = FocusPurple,
-                        unfocusedBorderColor = FocusCardBorder,
-                        focusedTextColor = FocusTextPrimary,
-                        unfocusedTextColor = FocusTextPrimary,
-                        focusedContainerColor = FocusBgDark.copy(alpha = 0.6f),
-                        unfocusedContainerColor = FocusBgDark.copy(alpha = 0.6f)
-                    ),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Suggestion chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    presetChips.take(3).forEach { chip ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(FocusCardBorder.copy(alpha = 0.5f))
-                                .slimeBounceClick { taskTitle = chip }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                    val entries = SessionCategory.entries
+                    for (row in 0..1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = chip,
-                                color = FocusTextSecondary,
-                                fontSize = 12.sp
-                            )
+                            for (col in 0..1) {
+                                val index = row * 2 + col
+                                if (index < entries.size) {
+                                    val cat = entries[index]
+                                    val isSelected = selectedCategory == cat
+                                    val chipGlowColor = when (cat) {
+                                        SessionCategory.JOB -> FocusCyan
+                                        SessionCategory.CODING -> FocusPurple
+                                        SessionCategory.PROJECTS -> FocusCoral
+                                        SessionCategory.RESEARCH_STUDY -> FocusAmber
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(
+                                                if (isSelected) chipGlowColor.copy(alpha = 0.22f)
+                                                else FocusCardBorder.copy(alpha = 0.25f)
+                                            )
+                                            .border(
+                                                width = if (isSelected) 1.8.dp else 1.dp,
+                                                color = if (isSelected) chipGlowColor else FocusCardBorder.copy(alpha = 0.4f),
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                            .slimeBounceClick {
+                                                selectedCategory = cat
+                                                selectedSubtag = ""
+                                                customSubtagInput = ""
+                                            }
+                                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(text = cat.emoji, fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = cat.displayName,
+                                                color = if (isSelected) FocusTextPrimary else FocusTextSecondary,
+                                                fontSize = 13.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                // Section 2: Subtag Area (Only shown for non-Job categories)
+                if (selectedCategory != SessionCategory.JOB) {
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = "Category",
-                    color = FocusTextSecondary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                    Text(
+                        text = "Subtag (topic / project)",
+                        color = FocusTextSecondary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Category selector chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SessionCategory.entries.forEach { category ->
-                        val isSelected = selectedCategory == category
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) FocusPurple.copy(alpha = 0.25f)
-                                    else FocusCardBorder.copy(alpha = 0.3f)
+                    // Suggested Subtag Chips Flow
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        dynamicSubtags.take(3).forEach { subtag ->
+                            val isSelected = selectedSubtag.equals(subtag, ignoreCase = true)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) FocusPurple.copy(alpha = 0.3f)
+                                        else FocusCardBorder.copy(alpha = 0.4f)
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSelected) FocusPurpleLight else Color.Transparent,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .slimeBounceClick {
+                                        selectedSubtag = subtag
+                                        customSubtagInput = subtag
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = subtag,
+                                    color = if (isSelected) FocusPurpleLight else FocusTextSecondary,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSelected) FocusPurple else Color.Transparent,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .slimeBounceClick { selectedCategory = category }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = category.displayName,
-                                color = if (isSelected) FocusPurpleLight else FocusTextMuted,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
+                            }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Single Custom Subtag Input
+                    OutlinedTextField(
+                        value = customSubtagInput,
+                        onValueChange = {
+                            customSubtagInput = it
+                            selectedSubtag = it
+                        },
+                        placeholder = {
+                            Text(
+                                text = "e.g. LLM Load Balancer, Diffusion Models...",
+                                color = FocusTextMuted,
+                                fontSize = 13.sp
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Pencil",
+                                tint = FocusPurpleLight,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = FocusPurple,
+                            unfocusedBorderColor = FocusCardBorder,
+                            focusedTextColor = FocusTextPrimary,
+                            unfocusedTextColor = FocusTextPrimary,
+                            focusedContainerColor = FocusBgDark.copy(alpha = 0.6f),
+                            unfocusedContainerColor = FocusBgDark.copy(alpha = 0.6f)
+                        ),
+                        singleLine = true
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(26.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Large Check In Button with Katana Slash Cut feedback!
+                // Resolved Display Action Text
+                val effectiveTag = when {
+                    selectedCategory == SessionCategory.JOB -> "Job"
+                    customSubtagInput.isNotBlank() -> customSubtagInput.trim()
+                    selectedSubtag.isNotBlank() -> selectedSubtag.trim()
+                    else -> selectedCategory.displayName
+                }
+
+                val buttonLabel = if (selectedCategory == SessionCategory.JOB) {
+                    "Check In • 💼 Job"
+                } else {
+                    "Check In • ${selectedCategory.displayName} : $effectiveTag"
+                }
+
+                // Check In Button with DayTheme feedback and gradient!
                 AnimePillButton(
-                    text = "Check In",
+                    text = buttonLabel,
                     modifier = Modifier.fillMaxWidth(),
-                    feedbackStyle = AnimeFeedbackStyle.KATANA,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = "Start",
-                            tint = DarkButtonText,
+                            tint = LocalDayTheme.current.buttonStyle.textColor,
                             modifier = Modifier.size(20.dp)
                         )
                     },
                     onClick = {
-                        val title = if (taskTitle.isBlank()) "Focus Session" else taskTitle
-                        onStartSession(title, selectedCategory)
+                        val sessionTitle = if (selectedCategory == SessionCategory.JOB) "Job" else effectiveTag
+                        onStartSession(sessionTitle, selectedCategory, effectiveTag)
                     }
                 )
             }

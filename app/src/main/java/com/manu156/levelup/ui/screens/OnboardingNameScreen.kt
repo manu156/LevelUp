@@ -48,6 +48,7 @@ import com.manu156.levelup.ui.theme.FocusPurpleLight
 import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
+import com.manu156.levelup.ui.theme.LocalDayTheme
 import com.manu156.levelup.ui.theme.GaeguFontFamily
 
 @Composable
@@ -168,12 +169,11 @@ fun OnboardingNameScreen(
                     AnimePillButton(
                         text = "Get Started",
                         modifier = Modifier.fillMaxWidth(),
-                        textColor = DarkButtonText,
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "Continue",
-                                tint = DarkButtonText,
+                                tint = LocalDayTheme.current.buttonStyle.textColor,
                                 modifier = Modifier.size(20.dp)
                             )
                         },

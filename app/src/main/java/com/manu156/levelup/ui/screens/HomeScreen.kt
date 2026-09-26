@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -65,6 +66,7 @@ import com.manu156.levelup.ui.theme.FocusTextMuted
 import com.manu156.levelup.ui.theme.FocusTextPrimary
 import com.manu156.levelup.ui.theme.FocusTextSecondary
 import com.manu156.levelup.ui.theme.GaeguFontFamily
+import com.manu156.levelup.ui.theme.LocalDayTheme
 
 @Composable
 fun HomeScreen(
@@ -101,12 +103,17 @@ fun HomeScreen(
         }
     }
 
+    val currentDayTheme = LocalDayTheme.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(FocusBgDark)
     ) {
-        SakuraFloatingOverlay(particleCount = 12)
+        SakuraFloatingOverlay(
+            particleCount = 12,
+            tint = currentDayTheme.palette.secondary
+        )
 
         LazyColumn(
             modifier = Modifier
@@ -138,6 +145,26 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(text = "✨", fontSize = 22.sp)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(currentDayTheme.palette.primary.copy(alpha = 0.15f))
+                                .border(
+                                    1.dp,
+                                    currentDayTheme.palette.primary.copy(alpha = 0.35f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "${currentDayTheme.vibeEmoji} ${currentDayTheme.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }} • ${currentDayTheme.name}",
+                                color = currentDayTheme.palette.primary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
 
@@ -282,13 +309,11 @@ fun HomeScreen(
                 AnimePillButton(
                     text = if (isSessionActive) "Continue Session" else "Check In",
                     modifier = Modifier.fillMaxWidth(),
-                    textColor = DarkButtonText,
-                    feedbackStyle = if (isSessionActive) AnimeFeedbackStyle.SLIME else AnimeFeedbackStyle.KATANA,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = "Play",
-                            tint = DarkButtonText,
+                            tint = currentDayTheme.buttonStyle.textColor,
                             modifier = Modifier.size(20.dp)
                         )
                     },

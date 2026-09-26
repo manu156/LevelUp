@@ -38,12 +38,13 @@ fun LevelUpTheme(
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
+    val currentDayTheme = DayThemeManager.currentDayTheme
     val currentPreset = AnimeThemeManager.currentPreset
 
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
-            window.statusBarColor = FocusBgDark.toArgb()
+            window.statusBarColor = currentDayTheme.palette.background.toArgb()
             window.navigationBarColor = FocusNavBg.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
@@ -51,12 +52,18 @@ fun LevelUpTheme(
     }
 
     val dynamicColorScheme = FocusColorScheme.copy(
-        primary = currentPreset.primaryColor,
-        secondary = currentPreset.secondaryColor,
-        tertiary = currentPreset.accentMint
+        primary = currentDayTheme.palette.primary,
+        secondary = currentDayTheme.palette.secondary,
+        tertiary = currentDayTheme.palette.accent,
+        background = currentDayTheme.palette.background,
+        surface = currentDayTheme.palette.surface,
+        outline = currentDayTheme.palette.border
     )
 
-    CompositionLocalProvider(LocalAnimeTheme provides currentPreset) {
+    CompositionLocalProvider(
+        LocalAnimeTheme provides currentPreset,
+        LocalDayTheme provides currentDayTheme
+    ) {
         MaterialTheme(
             colorScheme = dynamicColorScheme,
             typography = Typography,

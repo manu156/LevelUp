@@ -45,7 +45,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
     private val _activeTaskTitle = MutableStateFlow("Focus Session")
     val activeTaskTitle: StateFlow<String> = _activeTaskTitle.asStateFlow()
 
-    private val _activeCategory = MutableStateFlow(SessionCategory.DEEP_WORK)
+    private val _activeCategory = MutableStateFlow<SessionCategory>(SessionCategory.JOB)
     val activeCategory: StateFlow<SessionCategory> = _activeCategory.asStateFlow()
 
     private val _activeStartTime = MutableStateFlow(0L)
@@ -104,9 +104,9 @@ class FocusSessionRepository private constructor(private val context: Context) {
         val savedStartTime = prefs.getLong(KEY_ACTIVE_START, 0L)
         updateUserProfileStats()
         if (savedStartTime > 0L) {
-            val title = prefs.getString(KEY_ACTIVE_TITLE, "Focus Session") ?: "Focus Session"
+            val title = prefs.getString(KEY_ACTIVE_TITLE, "Job") ?: "Job"
             val categoryName = prefs.getString(KEY_ACTIVE_CATEGORY, null)
-                ?: SessionCategory.DEEP_WORK.name
+                ?: SessionCategory.JOB.name
             resumeSession(savedStartTime, title, categoryName)
         }
     }
@@ -136,12 +136,23 @@ class FocusSessionRepository private constructor(private val context: Context) {
                 val content = file.readText()
                 val array = JSONArray(content)
                 val sessions = mutableListOf<WorkSession>()
+                var hasLegacyCategories = false
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
+                    val rawCat = obj.optString("category", "")
+                    if (rawCat in listOf("DEEP_WORK", "GENERAL_WORK", "MEETINGS", "BREAKS", "WORK")) {
+                        hasLegacyCategories = true
+                    }
                     sessions.add(sessionFromJson(obj))
                 }
                 _allSessions.value = sessions.sortedByDescending { it.startTimeMillis }
                 _todaySessions.value = sessions.filter { isSessionToday(it) }.sortedByDescending { it.startTimeMillis }
+
+                // One-time legacy migration: if any old categories found, rewrite cleanly as PROJECTS
+                if (hasLegacyCategories || !prefs.getBoolean("legacy_migrated_v2", false)) {
+                    saveSessions()
+                    prefs.edit().putBoolean("legacy_migrated_v2", true).apply()
+                }
             }
         } catch (e: Exception) {
             android.util.Log.e("FocusSessionRepository", "Error loading sessions", e)
@@ -173,11 +184,18 @@ class FocusSessionRepository private constructor(private val context: Context) {
     }
 
     private fun sessionFromJson(obj: JSONObject): WorkSession {
-        val categoryName = obj.optString("category", "DEEP_WORK")
-        val category = try {
-            SessionCategory.valueOf(categoryName)
-        } catch (e: Exception) {
-            SessionCategory.DEEP_WORK
+        val categoryName = obj.optString("category", "PROJECTS")
+        val category = when (categoryName.uppercase()) {
+            "JOB" -> SessionCategory.JOB
+            "CODING" -> SessionCategory.CODING
+            "PROJECTS" -> SessionCategory.PROJECTS
+            "RESEARCH_STUDY", "RESEARCH" -> SessionCategory.RESEARCH_STUDY
+            "DEEP_WORK", "MEETINGS", "BREAKS", "GENERAL_WORK", "WORK" -> SessionCategory.PROJECTS
+            else -> try {
+                SessionCategory.valueOf(categoryName)
+            } catch (e: Exception) {
+                SessionCategory.PROJECTS
+            }
         }
         return WorkSession(
             id = obj.optString("id", UUID.randomUUID().toString()),
@@ -185,7 +203,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
             category = category,
             startTimeMillis = obj.optLong("startTimeMillis", System.currentTimeMillis()),
             endTimeMillis = obj.optLong("endTimeMillis", System.currentTimeMillis() + 3 * 3600 * 1000),
-            tag = obj.optString("tag", "Work"),
+            tag = obj.optString("tag", category.displayName),
             notes = obj.optString("notes", "")
         )
     }
@@ -226,18 +244,22 @@ class FocusSessionRepository private constructor(private val context: Context) {
     }
 
 
-    fun startSession(title: String, category: SessionCategory = SessionCategory.DEEP_WORK) {
+    fun startSession(title: String, category: SessionCategory = SessionCategory.JOB, tag: String = "") {
         val now = System.currentTimeMillis()
         _isSessionActive.value = true
-        _activeTaskTitle.value = if (title.isBlank()) "Deep Focus" else title
+        val resolvedTag = if (tag.isNotBlank()) tag.trim() else if (category == SessionCategory.JOB) "Job" else title.ifBlank { category.displayName }
+        val resolvedTitle = if (title.isNotBlank()) title.trim() else resolvedTag
+
+        _activeTaskTitle.value = resolvedTitle
         _activeCategory.value = category
         _activeStartTime.value = now
         _elapsedSeconds.value = 0L
 
         prefs.edit()
             .putLong(KEY_ACTIVE_START, now)
-            .putString(KEY_ACTIVE_TITLE, _activeTaskTitle.value)
+            .putString(KEY_ACTIVE_TITLE, resolvedTitle)
             .putString(KEY_ACTIVE_CATEGORY, category.name)
+            .putString(KEY_ACTIVE_TAG, resolvedTag)
             .apply()
 
         startTicker()
@@ -263,10 +285,12 @@ class FocusSessionRepository private constructor(private val context: Context) {
     private fun resumeSession(startTime: Long, title: String, categoryName: String) {
         _isSessionActive.value = true
         _activeTaskTitle.value = title
-        _activeCategory.value = try {
-            SessionCategory.valueOf(categoryName)
-        } catch (e: Exception) {
-            SessionCategory.DEEP_WORK
+        _activeCategory.value = when (categoryName.uppercase()) {
+            "JOB" -> SessionCategory.JOB
+            "CODING" -> SessionCategory.CODING
+            "PROJECTS" -> SessionCategory.PROJECTS
+            "RESEARCH_STUDY", "RESEARCH" -> SessionCategory.RESEARCH_STUDY
+            else -> SessionCategory.PROJECTS
         }
         _activeStartTime.value = startTime
         val now = System.currentTimeMillis()
@@ -291,13 +315,16 @@ class FocusSessionRepository private constructor(private val context: Context) {
         val start = _activeStartTime.value
 
         val category = _activeCategory.value
+        val savedTag = prefs.getString(KEY_ACTIVE_TAG, null)
+        val resolvedTag = if (!savedTag.isNullOrBlank()) savedTag else if (category == SessionCategory.JOB) "Job" else _activeTaskTitle.value.ifBlank { category.displayName }
+
         val session = WorkSession(
             id = UUID.randomUUID().toString(),
             title = _activeTaskTitle.value,
             category = category,
             startTimeMillis = if (start > 0) start else now - 3 * 3600 * 1000,
             endTimeMillis = now,
-            tag = category.displayName,
+            tag = resolvedTag,
             notes = notes
         )
 
@@ -313,7 +340,12 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _activeStartTime.value = 0L
         tickerJob?.cancel()
 
-        prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).remove(KEY_ACTIVE_CATEGORY).apply()
+        prefs.edit()
+            .remove(KEY_ACTIVE_START)
+            .remove(KEY_ACTIVE_TITLE)
+            .remove(KEY_ACTIVE_CATEGORY)
+            .remove(KEY_ACTIVE_TAG)
+            .apply()
 
         val config = gitSyncManager.getSavedConfig()
         if (config.isConfigured) {
@@ -330,10 +362,50 @@ class FocusSessionRepository private constructor(private val context: Context) {
         _isSessionActive.value = false
         _elapsedSeconds.value = 0L
         _activeStartTime.value = 0L
-        _activeCategory.value = SessionCategory.DEEP_WORK
+        _activeCategory.value = SessionCategory.JOB
         tickerJob?.cancel()
-        prefs.edit().remove(KEY_ACTIVE_START).remove(KEY_ACTIVE_TITLE).remove(KEY_ACTIVE_CATEGORY).apply()
+        prefs.edit()
+            .remove(KEY_ACTIVE_START)
+            .remove(KEY_ACTIVE_TITLE)
+            .remove(KEY_ACTIVE_CATEGORY)
+            .remove(KEY_ACTIVE_TAG)
+            .apply()
         stopForegroundService()
+    }
+
+    /**
+     * Returns learned subtags from past sessions for quick chip suggestions.
+     * Combines category-specific subtags first, then appends popular subtags from other categories.
+     */
+    fun getSuggestedSubtags(category: SessionCategory): List<String> {
+        val all = _allSessions.value
+        // Category specific tags (excluding generic fallback strings)
+        val ignored = setOf("Job", "Work", "Focus Session", "Coding", "Projects", "Research / Study", "Deep Work")
+        val categoryTags = all
+            .filter { it.category == category && it.tag.isNotBlank() && it.tag !in ignored }
+            .groupBy { it.tag.trim() }
+            .entries
+            .sortedByDescending { it.value.size }
+            .map { it.key }
+
+        // Top tags across all other categories for cross-pollination
+        val crossCategoryTags = all
+            .filter { it.category != category && it.tag.isNotBlank() && it.tag !in ignored }
+            .groupBy { it.tag.trim() }
+            .entries
+            .sortedByDescending { it.value.size }
+            .map { it.key }
+
+        // Default seed tags per category
+        val defaultSeeds = when (category) {
+            SessionCategory.JOB -> emptyList()
+            SessionCategory.CODING -> listOf("DSA", "Competitive Programming", "System Design", "LeetCode")
+            SessionCategory.PROJECTS -> listOf("LLM Load Balancer", "LevelUp App", "Personal Web", "Open Source")
+            SessionCategory.RESEARCH_STUDY -> listOf("Diffusion Models", "Research Paper", "Transformers", "Math & ML")
+        }
+
+        // Merge category tags -> default seeds -> cross category tags (distinct, preserve order)
+        return (categoryTags + defaultSeeds + crossCategoryTags).distinct()
     }
 
     private fun updateUserProfileStats() {
@@ -372,28 +444,30 @@ class FocusSessionRepository private constructor(private val context: Context) {
 
     fun getDayStatsForDate(timestamp: Long): DayStats {
         val sessions = _allSessions.value.filter { isSameDay(it.startTimeMillis, timestamp) }
-        var deepWorkMins = 0L
-        var meetingMins = 0L
-        var breakMins = 0L
+        var jobMins = 0L
+        var codingMins = 0L
+        var projectsMins = 0L
+        var researchMins = 0L
 
         sessions.forEach { s ->
             when (s.category) {
-                SessionCategory.DEEP_WORK -> deepWorkMins += s.durationMinutes
-                SessionCategory.MEETINGS -> meetingMins += s.durationMinutes
-                SessionCategory.BREAKS -> breakMins += s.durationMinutes
-                SessionCategory.GENERAL_WORK -> deepWorkMins += s.durationMinutes
+                SessionCategory.JOB -> jobMins += s.durationMinutes
+                SessionCategory.CODING -> codingMins += s.durationMinutes
+                SessionCategory.PROJECTS -> projectsMins += s.durationMinutes
+                SessionCategory.RESEARCH_STUDY -> researchMins += s.durationMinutes
             }
         }
 
-        val totalMins = deepWorkMins + meetingMins + breakMins
+        val totalMins = jobMins + codingMins + projectsMins + researchMins
         val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
 
         return DayStats(
             dateLabel = sdf.format(java.util.Date(timestamp)),
             totalMinutes = totalMins,
-            deepWorkMinutes = deepWorkMins,
-            meetingsMinutes = meetingMins,
-            breaksMinutes = breakMins,
+            jobMinutes = jobMins,
+            codingMinutes = codingMins,
+            projectsMinutes = projectsMins,
+            researchMinutes = researchMins,
             sessionCount = sessions.size,
             diffVsYesterdayMinutes = 0
         )
@@ -414,28 +488,30 @@ class FocusSessionRepository private constructor(private val context: Context) {
 
     fun getDayStats(): DayStats {
         val sessions = _todaySessions.value
-        var deepWorkMins = 0L
-        var meetingMins = 0L
-        var breakMins = 0L
+        var jobMins = 0L
+        var codingMins = 0L
+        var projectsMins = 0L
+        var researchMins = 0L
 
         sessions.forEach { s ->
             when (s.category) {
-                SessionCategory.DEEP_WORK -> deepWorkMins += s.durationMinutes
-                SessionCategory.MEETINGS -> meetingMins += s.durationMinutes
-                SessionCategory.BREAKS -> breakMins += s.durationMinutes
-                SessionCategory.GENERAL_WORK -> deepWorkMins += s.durationMinutes
+                SessionCategory.JOB -> jobMins += s.durationMinutes
+                SessionCategory.CODING -> codingMins += s.durationMinutes
+                SessionCategory.PROJECTS -> projectsMins += s.durationMinutes
+                SessionCategory.RESEARCH_STUDY -> researchMins += s.durationMinutes
             }
         }
 
-        val totalMins = deepWorkMins + meetingMins + breakMins
+        val totalMins = jobMins + codingMins + projectsMins + researchMins
         val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
 
         return DayStats(
             dateLabel = sdf.format(java.util.Date()),
             totalMinutes = totalMins,
-            deepWorkMinutes = deepWorkMins,
-            meetingsMinutes = meetingMins,
-            breaksMinutes = breakMins,
+            jobMinutes = jobMins,
+            codingMinutes = codingMins,
+            projectsMinutes = projectsMins,
+            researchMinutes = researchMins,
             sessionCount = sessions.size,
             diffVsYesterdayMinutes = 0
         )
@@ -710,6 +786,7 @@ class FocusSessionRepository private constructor(private val context: Context) {
         private const val KEY_ACTIVE_START = "active_session_start"
         private const val KEY_ACTIVE_TITLE = "active_session_title"
         private const val KEY_ACTIVE_CATEGORY = "active_session_category"
+        private const val KEY_ACTIVE_TAG = "active_session_tag"
         private const val KEY_NOTIFICATIONS = "notifications_enabled"
         private const val KEY_HAPTICS = "haptics_enabled"
 

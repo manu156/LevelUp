@@ -63,9 +63,10 @@ import com.manu156.levelup.ui.theme.FocusTextSecondary
 @Composable
 fun DonutChartWithCat(
     totalTimeStr: String = "7h 28m",
-    deepWorkPercent: Float = 0.70f,
-    meetingsPercent: Float = 0.22f,
-    breaksPercent: Float = 0.08f,
+    jobPercent: Float = 0f,
+    codingPercent: Float = 0f,
+    projectsPercent: Float = 0f,
+    researchPercent: Float = 0f,
     modifier: Modifier = Modifier,
     size: Dp = 220.dp
 ) {
@@ -97,49 +98,65 @@ fun DonutChartWithCat(
                 style = Stroke(width = strokeWidth)
             )
 
-            val gap = 4f // degrees between segments
-            val totalSweep = 360f - (3 * gap)
+            val activeCount = listOf(jobPercent, codingPercent, projectsPercent, researchPercent).count { it > 0.001f }
+            val gap = if (activeCount > 1) 4f else 0f
+            val totalSweep = 360f - (activeCount * gap)
 
-            val deepSweep = totalSweep * deepWorkPercent * animProgress.value
-            val meetSweep = totalSweep * meetingsPercent * animProgress.value
-            val breakSweep = totalSweep * breaksPercent * animProgress.value
+            val jobSweep = totalSweep * jobPercent * animProgress.value
+            val codingSweep = totalSweep * codingPercent * animProgress.value
+            val projectsSweep = totalSweep * projectsPercent * animProgress.value
+            val researchSweep = totalSweep * researchPercent * animProgress.value
 
             var currentAngle = -90f
 
-            // 1. Deep Work segment (Purple)
-            if (deepSweep > 0) {
+            // 1. Job segment (Cyan / Sky)
+            if (jobSweep > 0) {
+                drawArc(
+                    brush = Brush.sweepGradient(listOf(FocusCyan, Color(0xFF64D2FF))),
+                    startAngle = currentAngle,
+                    sweepAngle = jobSweep,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+                currentAngle += jobSweep + gap
+            }
+
+            // 2. Coding segment (Purple / Violet)
+            if (codingSweep > 0) {
                 drawArc(
                     brush = Brush.sweepGradient(listOf(FocusPurple, FocusPurpleLight)),
                     startAngle = currentAngle,
-                    sweepAngle = deepSweep,
+                    sweepAngle = codingSweep,
                     useCenter = false,
                     topLeft = topLeft,
                     size = arcSize,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
-                currentAngle += deepSweep + gap
+                currentAngle += codingSweep + gap
             }
 
-            // 2. Meetings segment (Coral)
-            if (meetSweep > 0) {
+            // 3. Projects segment (Coral / Pink)
+            if (projectsSweep > 0) {
                 drawArc(
                     brush = Brush.sweepGradient(listOf(FocusCoral, Color(0xFFFF8E9F))),
                     startAngle = currentAngle,
-                    sweepAngle = meetSweep,
+                    sweepAngle = projectsSweep,
                     useCenter = false,
                     topLeft = topLeft,
                     size = arcSize,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
-                currentAngle += meetSweep + gap
+                currentAngle += projectsSweep + gap
             }
 
-            // 3. Breaks segment (Amber)
-            if (breakSweep > 0) {
+            // 4. Research / Study segment (Amber / Gold)
+            if (researchSweep > 0) {
                 drawArc(
-                    color = FocusAmber,
+                    brush = Brush.sweepGradient(listOf(FocusAmber, Color(0xFFFFD56B))),
                     startAngle = currentAngle,
-                    sweepAngle = breakSweep,
+                    sweepAngle = researchSweep,
                     useCenter = false,
                     topLeft = topLeft,
                     size = arcSize,
